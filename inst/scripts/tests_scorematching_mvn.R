@@ -76,6 +76,17 @@ loo_score <- function(obs, mu, precmat){
   return(mean(score_vec))
 }
 
+loo_score_2 <- function(obs, mu, precmat){
+  n_obs <- nrow(obs)
+  n_dim <- nrow(precmat)
+  score_vec <- nrow(n_dim)
+  for(i in c(1:n_dim)){
+    param <- conditional_mvn(i,obs,list("mu"=mu,"prec"=precmat))
+    score_vec[i] <- mean(sroot_normal(obs[,i],param$mu,param$sigma))
+  }
+  return(mean(score_vec))
+}
+
 
 
 
@@ -136,9 +147,11 @@ get_cov_mat <- function(rho,n){
 }
 
 
-narr <- seq(2,100,5)
+narr <- 2^c(1:9)
 times_score <- rep(0,length(narr))
 times_log <- rep(0,length(narr))
+o_score_list <- vector("list", length(narr))
+o_log_list <- vector("list", length(narr))
 
 for(i_n in c(1:length(narr))){
 
@@ -170,22 +183,23 @@ my_log_obj_func <- function(par){
 rho0<-0
 mu0 <- rep(1,n)
 starttime <- Sys.time()
-optim(par=c(rho0,mu0),my_obj_func,control=list(maxit=2000))
+o1<-optim(par=c(rho0,mu0),my_obj_func,control=list(maxit=50000))
 endtime <- Sys.time()
-times_score[i_n]<-endtime-starttime
+times_score[i_n]<-difftime(endtime,starttime, units="secs")
+o_score_list[[i_n]]<-o1
 # tic("Score optim old")
 # optim(par=c(rho0,mu0),my_obj_func_old,control=list(maxit=2000))
 # toc()
 
 starttime <- Sys.time()
-optim(par=c(rho0,mu0),my_log_obj_func,control=list(maxit=5000))
+o2<-optim(par=c(rho0,mu0),my_log_obj_func,control=list(maxit=50000))
 endtime <- Sys.time()
-times_log[i_n]<-endtime-starttime
+times_log[i_n]<-difftime(endtime,starttime, units="secs")
+o_log_list[[i_n]]<-o2
 
 }
 
 times_score/times_log
-
 
 ##############
 tic()
