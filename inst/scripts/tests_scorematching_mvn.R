@@ -2,6 +2,7 @@ library(ggplot2)
 library(matlib)
 library(mvtnorm)
 library(tictoc)
+library(Matrix)
 
 
 # sroot_mvn <- function(y,params){
@@ -149,8 +150,17 @@ get_cov_mat <- function(rho,n){
   return(Sigma/(1-rho^2))
 }
 
+get_prec_mat_sparse <- function(rho,n){
+  #Use only if n>=3
+  i<-c(c(1:n),c(1:(n-1)),c(2:n))
+  j<-c(c(1:n),c(2:n),c(1:(n-1)))
+  val<-c(1,rep(1+rho^2,n-2),1,rep(-rho,2*(n-1)))
+  Qmat <- sparseMatrix(i=i,j=j,x=val)
+  return(Qmat)
+}
 
-narr <- 2^c(1:10)
+
+narr <- 2^c(1:4)
 times_score <- rep(0,length(narr))
 times_log <- rep(0,length(narr))
 o_score_list <- vector("list", length(narr))
@@ -163,10 +173,10 @@ for(i_n in c(1:length(narr))){
 
 print(paste("Iteration",i_n))
 rhotrue <- 0.5
-n <- narr[i_n]
+n <- 1000#narr[i_n]
 mu<- rep(0,n)
 Qmat <- get_prec_mat(rhotrue,n)
-m<-rmvnorm(n = 1000, mu,inv(Qmat))
+m<-rmvnorm(n = 100, mu,inv(Qmat))
 
 
 my_obj_func_old <- function(par){
@@ -188,6 +198,13 @@ my_obj_func_2 <- function(par){
   #mu <- par[-1]
   mu <- rep(par[2],n)
   return(loo_score_2(m,mu,get_prec_mat(rho,ncol(m))))
+}
+
+my_obj_func_3 <- function(par){
+  rho <- par[1]
+  #mu <- par[-1]
+  mu <- rep(par[2],n)
+  return(loo_score_2(m,mu,get_prec_mat_sparse(rho,ncol(m))))
 }
 
 # my_log_obj_func <- function(par){
@@ -214,7 +231,7 @@ times_log[i_n]<-difftime(endtime,starttime, units="secs")
 o_log_list[[i_n]]<-o2
 
 starttime <- Sys.time()
-o1<-optim(par=c(rho0,mu0),my_obj_func,control=list(maxit=50000))
+o1<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000))
 endtime <- Sys.time()
 times_score[i_n]<-difftime(endtime,starttime, units="secs")
 o_score_list[[i_n]]<-o1
@@ -260,4 +277,24 @@ loo_score_2(m,mu,Qmat)
 toc()
 tic()
 loo_score_old(m,mu,Qmat)
+toc()
+
+
+
+
+######################
+tic("sparse")
+pmat1<-get_prec_mat_sparse(0.5,10000)
+toc()
+tic("not sparse")
+pmat2<-get_prec_mat(0.5,10000)
+toc()
+v<-rep(1,10000)
+
+
+tic("sparse")
+pmat1%*%v
+toc()
+tic("not sparse")
+pmat2%*%v
 toc()
