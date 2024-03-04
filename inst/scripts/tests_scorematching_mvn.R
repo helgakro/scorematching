@@ -92,6 +92,16 @@ loo_score_2 <- function(obs, mu, precmat){
 }
 
 
+log_dmvn <- function(obs,mu,precmat){
+  n_dim <- nrow(precmat)
+  n_obs <- nrow(obs)
+  if(is.null(n_obs)){
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*t(obs-mu)%*%precmat%*%(obs-mu))
+  }else{
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu))))
+  }
+}
+
 
 
 #####################################
@@ -119,8 +129,11 @@ loo_score(m,mu, inv(Sigma_indep))
 loo_score(m,rep(2,2),precmat)
 
 
+log_dmvn(m[1,],mu,precmat)
+log(dmvnorm(m[1,],mu,Sigma))
 
-
+log_dmvn(m,mu,precmat)
+mean(log(dmvnorm(m,mu,Sigma)))
 
 ########################################
 # Parameter estimation
@@ -173,7 +186,7 @@ for(i_n in c(1:length(narr))){
 
 print(paste("Iteration",i_n))
 rhotrue <- 0.5
-n <- 1000#narr[i_n]
+n <- 100#narr[i_n]
 mu<- rep(0,n)
 Qmat <- get_prec_mat(rhotrue,n)
 m<-rmvnorm(n = 100, mu,inv(Qmat))
@@ -217,7 +230,8 @@ my_log_obj_func <- function(par){
   rho <- par[1]
   #mu <- par[-1]
   mu <- rep(par[2],n)
-  return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
+  return(-log_dmvn(m,mu,inv(get_prec_mat(rho,ncol(m)))))
+  #return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
   #return(-mean(log(dmvnorm(m,mu,inv(get_prec_mat(rho,ncol(m)))))))
 }
 
