@@ -305,8 +305,12 @@ print(o2$par)
 
 times_score_2/times_log
 
-plot(times_score_2[1:8]/times_log[1:8])
-plot(log(times_log[1:8]),log(times_score_2[1:8]))
+plot(log(times_score))
+lines(log(times_log))
+
+plot(times_score/times_log)
+plot(times_log/times_score)
+plot(log(times_log),log(times_score))
 
 (log(times_log[8])-log(times_log[5]))/(log(times_score_2[8])-log(times_score_2[5]))
 times_score
@@ -361,3 +365,106 @@ toc()
 tic()
 diag((m-mu)%*%Qmat%*%t(m-mu))
 toc()
+
+
+
+
+
+################# repeated optim for fixed n###################
+
+
+
+narr_rep <- rep(2^10,1000)
+times_score_rep <- rep(0,length(narr_rep))
+times_log_rep <- rep(0,length(narr_rep))
+o_score_list_rep <- vector("list", length(narr_rep))
+o_log_list_rep <- vector("list", length(narr_rep))
+times_score_rep_2 <- rep(0,length(narr_rep))
+o_score_list_rep_2 <- vector("list", length(narr_rep))
+
+
+for(i_n in c(1:length(narr_rep))){
+
+  print(paste("Iteration",i_n))
+  rhotrue <- 0.5
+  n <- narr_rep[i_n]
+  mu<- rep(0,n)
+  Qmat <- get_prec_mat_sparse(rhotrue,n)
+  #m<-rmvnorm(n = 100, mu,inv(Qmat))
+  m<-bayesSurv::rMVNorm(n = 100, mean=mu,Q=Qmat,param="canonical")
+
+
+  my_obj_func_old <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(loo_score_old(m,mu,get_prec_mat(rho,ncol(m))))
+  }
+
+  my_obj_func <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(loo_score(m,mu,get_prec_mat(rho,ncol(m))))
+  }
+
+  my_obj_func_2 <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(loo_score_2(m,mu,get_prec_mat(rho,ncol(m))))
+  }
+
+  my_obj_func_3 <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(loo_score_vecotrised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+  }
+
+  # my_log_obj_func <- function(par){
+  #   rho <- par[1]
+  #   mu <- par[-1]
+  #   return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
+  # }
+
+  my_log_obj_func <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    #return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
+    #return(-mean(log(dmvnorm(m,mu,inv(get_prec_mat(rho,ncol(m)))))))
+  }
+
+  rho0<-0
+  #mu0 <- rep(1,n)
+  mu0<-1
+
+
+  starttime <- Sys.time()
+  o1<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000))
+  endtime <- Sys.time()
+  times_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_score_list_rep[[i_n]]<-o1
+
+  starttime <- Sys.time()
+  o2<-optim(par=c(rho0,mu0),my_log_obj_func,control=list(maxit=50000))
+  endtime <- Sys.time()
+  times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_log_list_rep[[i_n]]<-o2
+
+
+}
+
+
+score_par <- sapply(o_score_list_rep[1:42], function(o) o$par)
+log_par <- sapply(o_log_list_rep[1:42], function(o) o$par)
+
+par_df <- data.frame(method=rep(c("score","log"),each=42), mu = c(score_par[1,],log_par[1,]), rho = c(score_par[2,],log_par[2,]))
+ggplot(par_df,aes(x=mu,y=rho,color=method))+geom_point()
+
+plot(score_par[1,],log_par[1,])
+abline(a=0,b=1)
+plot(score_par[2,],log_par[2,])
+abline(a=0,b=1)
