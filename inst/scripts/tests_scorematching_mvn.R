@@ -92,13 +92,34 @@ loo_score_2 <- function(obs, mu, precmat){
 }
 
 
+loo_score_sapply <- function(obs, mu, precmat){
+  n_obs <- nrow(obs)
+  obs <- t(obs)
+  n_dim <- nrow(precmat)
+  score_vec <- nrow(n_dim)
+  Qmu <- precmat%*%mu #matrix multiplication
+  Qx <- precmat%*%obs
+  return(mean(sapply(c(1:n_dim), function(i)sroot_normal(obs[i,],(Qmu[i]-Qx[i,])/precmat[i,i]+obs[i,],1/sqrt(precmat[i,i])))))
+}
+
+
+loo_score_vecotrised <- function(obs, mu, precmat){
+  n_obs <- nrow(obs)
+  obs <- t(obs)
+  n_dim <- nrow(precmat)
+  score_vec <- nrow(n_dim)
+  return(mean(sroot_normal(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),rep(1/sqrt(diag(precmat)),n_obs))))
+}
+
+
 log_dmvn <- function(obs,mu,precmat){
   n_dim <- nrow(precmat)
   n_obs <- nrow(obs)
   if(is.null(n_obs)){
     return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*t(obs-mu)%*%precmat%*%(obs-mu))
   }else{
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu))))
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
+    #return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(diag((obs-mu)%*%precmat%*%t(obs-mu))))
   }
 }
 
@@ -112,8 +133,8 @@ mu <- rep(0,2)
 Sigma <- matrix(c(10,3,3,2),2,2)
 Sigma
 precmat <- inv(Sigma)
-precmat
-m<-rmvnorm(n = 1000, mu,Sigma)
+precmat<-Matrix(precmat,sparse = TRUE)
+m<-rmvnorm(n = 5, mu,Sigma)
 #m<-as.data.frame(m)
 #str(m)
 #ggplot(m, aes(x=V1, y=V2))+
@@ -127,12 +148,18 @@ Sigma_indep <- matrix(c(10,0,0,2),2,2)
 loo_score(m, mu, precmat)
 loo_score(m,mu, inv(Sigma_indep))
 loo_score(m,rep(2,2),precmat)
+loo_score(m,rep(2,2),Matrix(precmat,sparse=TRUE))
+
+loo_score_2(m,rep(2,2),Matrix(precmat,sparse=TRUE))
+loo_score_sapply(m,rep(2,2),Matrix(precmat,sparse=TRUE))
+loo_score_vecotrised(m,rep(2,2),Matrix(precmat,sparse=TRUE))
 
 
 log_dmvn(m[1,],mu,precmat)
 log(dmvnorm(m[1,],mu,Sigma))
 
 log_dmvn(m,mu,precmat)
+log_dmvn(m,mu,Matrix(precmat,sparse=TRUE))
 mean(log(dmvnorm(m,mu,Sigma)))
 
 ########################################
@@ -173,7 +200,7 @@ get_prec_mat_sparse <- function(rho,n){
 }
 
 
-narr <- 2^c(1:4)
+narr <- 2^c(1:14)
 times_score <- rep(0,length(narr))
 times_log <- rep(0,length(narr))
 o_score_list <- vector("list", length(narr))
@@ -186,10 +213,11 @@ for(i_n in c(1:length(narr))){
 
 print(paste("Iteration",i_n))
 rhotrue <- 0.5
-n <- 100#narr[i_n]
+n <- narr[i_n]
 mu<- rep(0,n)
-Qmat <- get_prec_mat(rhotrue,n)
-m<-rmvnorm(n = 100, mu,inv(Qmat))
+Qmat <- get_prec_mat_sparse(rhotrue,n)
+#m<-rmvnorm(n = 100, mu,inv(Qmat))
+m<-bayesSurv::rMVNorm(n = 100, mean=mu,Q=Qmat,param="canonical")
 
 
 my_obj_func_old <- function(par){
@@ -217,7 +245,7 @@ my_obj_func_3 <- function(par){
   rho <- par[1]
   #mu <- par[-1]
   mu <- rep(par[2],n)
-  return(loo_score_2(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+  return(loo_score_vecotrised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
 }
 
 # my_log_obj_func <- function(par){
@@ -230,7 +258,7 @@ my_log_obj_func <- function(par){
   rho <- par[1]
   #mu <- par[-1]
   mu <- rep(par[2],n)
-  return(-log_dmvn(m,mu,inv(get_prec_mat(rho,ncol(m)))))
+  return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
   #return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
   #return(-mean(log(dmvnorm(m,mu,inv(get_prec_mat(rho,ncol(m)))))))
 }
@@ -238,11 +266,7 @@ my_log_obj_func <- function(par){
 rho0<-0
 #mu0 <- rep(1,n)
 mu0<-1
-starttime <- Sys.time()
-o2<-optim(par=c(rho0,mu0),my_log_obj_func,control=list(maxit=50000))
-endtime <- Sys.time()
-times_log[i_n]<-difftime(endtime,starttime, units="secs")
-o_log_list[[i_n]]<-o2
+
 
 starttime <- Sys.time()
 o1<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000))
@@ -253,21 +277,30 @@ o_score_list[[i_n]]<-o1
 # optim(par=c(rho0,mu0),my_obj_func_old,control=list(maxit=2000))
 # toc()
 
+# starttime <- Sys.time()
+# o1_2<-optim(par=c(rho0,mu0),my_obj_func_2,control=list(maxit=50000))
+# endtime <- Sys.time()
+# times_score_2[i_n]<-difftime(endtime,starttime, units="secs")
+# o_score_list_2[[i_n]]<-o1_2
+
 starttime <- Sys.time()
-o1_2<-optim(par=c(rho0,mu0),my_obj_func_2,control=list(maxit=50000))
+o2<-optim(par=c(rho0,mu0),my_log_obj_func,control=list(maxit=50000))
 endtime <- Sys.time()
-times_score_2[i_n]<-difftime(endtime,starttime, units="secs")
-o_score_list_2[[i_n]]<-o1_2
+times_log[i_n]<-difftime(endtime,starttime, units="secs")
+o_log_list[[i_n]]<-o2
 
-
-
-
-print(paste("Times: score",times_score[i_n],"score_2",times_score_2[i_n],"log",times_log[i_n]))
-print(paste("Convergence: score",o1$convergence,"score_2",o1_2$convergence,"log",o2$convergence))
-print(paste("Counts: score",o1$counts[[1]],"score_2",o1_2$counts[[1]],"log",o2$counts[[1]]))
+print(paste("Times: score",times_score[i_n],"log",times_log[i_n]))
+print(paste("Convergence: score",o1$convergence,"log",o2$convergence))
+print(paste("Counts: score",o1$counts[[1]],"log",o2$counts[[1]]))
 print(o1$par)
-print(o1_2$par)
 print(o2$par)
+
+# print(paste("Times: score",times_score[i_n],"score_2",times_score_2[i_n],"log",times_log[i_n]))
+# print(paste("Convergence: score",o1$convergence,"score_2",o1_2$convergence,"log",o2$convergence))
+# print(paste("Counts: score",o1$counts[[1]],"score_2",o1_2$counts[[1]],"log",o2$counts[[1]]))
+# print(o1$par)
+# print(o1_2$par)
+# print(o2$par)
 }
 
 times_score_2/times_log
@@ -292,7 +325,12 @@ toc()
 tic()
 loo_score_old(m,mu,Qmat)
 toc()
-
+tic()
+loo_score_sapply(m,mu,Qmat)
+toc()
+tic()
+loo_score_vecotrised(m,mu,Qmat)
+toc()
 
 
 
@@ -311,4 +349,15 @@ pmat1%*%v
 toc()
 tic("not sparse")
 pmat2%*%v
+toc()
+
+
+
+
+####################
+tic()
+sapply(c(1:100), function(i) as.numeric(t(m[i,]-mu)%*%Qmat%*%(m[i,]-mu)))
+toc()
+tic()
+diag((m-mu)%*%Qmat%*%t(m-mu))
 toc()
