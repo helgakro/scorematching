@@ -4,6 +4,11 @@ library(mvtnorm)
 library(tictoc)
 library(Matrix)
 
+###################
+# Set ggplot theme
+###################
+theme_set(theme_bw())
+theme_update(text = element_text(family = "serif", size=12),plot.title = element_text(hjust = 0.5))
 
 # sroot_mvn <- function(y,params){
 #   mu<-params[["mu"]]
@@ -30,98 +35,6 @@ library(Matrix)
 #
 #   return(score)
 # }
-
-
-conditional_mvn_old <- function(i,x,params){
-  mu <- params$mu
-  precmat <- params$prec
-  mu_new <- mu[i]-sum(precmat[i,-i]*(x[-i]-mu[-i]))/precmat[i,i]
-  sigma_new <- 1/sqrt(precmat[i,i])
-  return(list("mu"=mu_new,"sigma"=sigma_new))
-}
-
-loo_score_old <- function(obs, mu, precmat){
-  n_obs <- nrow(obs)
-  n_dim <- nrow(precmat)
-  score_vec <- matrix(0,n_obs,n_dim)
-  for(i in c(1:n_dim)){
-    for (k in c(1:n_obs)){
-      param <- conditional_mvn_old(i,obs[k,],list("mu"=mu,"prec"=precmat))
-      score_vec[k,i] <- mean(sroot_normal(obs[k,i],param$mu,param$sigma))
-    }
-  }
-  return(mean(score_vec))
-}
-
-
-conditional_mvn <- function(i,x,params){
-  mu <- params$mu
-  precmat <- params$prec
-  tmp<-t(precmat[i,-i]*t(x[,-i]-mu[-i]))
-  if(is.matrix(tmp)){
-    mu_new <- mu[i]-rowSums(tmp)/precmat[i,i]
-  }else{
-    mu_new <- mu[i]-tmp/precmat[i,i]
-  }
-  sigma_new <- 1/sqrt(precmat[i,i])
-  return(list("mu"=mu_new,"sigma"=sigma_new))
-}
-
-loo_score <- function(obs, mu, precmat){
-  n_obs <- nrow(obs)
-  n_dim <- nrow(precmat)
-  score_vec <- nrow(n_dim)
-  for(i in c(1:n_dim)){
-      param <- conditional_mvn(i,obs,list("mu"=mu,"prec"=precmat))
-      score_vec[i] <- mean(sroot_normal(obs[,i],param$mu,param$sigma))
-  }
-  return(mean(score_vec))
-}
-
-loo_score_2 <- function(obs, mu, precmat){
-  n_obs <- nrow(obs)
-  obs <- t(obs)
-  n_dim <- nrow(precmat)
-  score_vec <- nrow(n_dim)
-  Qmu <- precmat%*%mu #matrix multiplication
-  Qx <- precmat%*%obs
-  for(i in c(1:n_dim)){
-    score_vec[i] <- mean(sroot_normal(obs[i,],(Qmu[i]-Qx[i,])/precmat[i,i]+obs[i,],1/sqrt(precmat[i,i])))
-  }
-  return(mean(score_vec))
-}
-
-
-loo_score_sapply <- function(obs, mu, precmat){
-  n_obs <- nrow(obs)
-  obs <- t(obs)
-  n_dim <- nrow(precmat)
-  score_vec <- nrow(n_dim)
-  Qmu <- precmat%*%mu #matrix multiplication
-  Qx <- precmat%*%obs
-  return(mean(sapply(c(1:n_dim), function(i)sroot_normal(obs[i,],(Qmu[i]-Qx[i,])/precmat[i,i]+obs[i,],1/sqrt(precmat[i,i])))))
-}
-
-
-loo_score_vecotrised <- function(obs, mu, precmat){
-  n_obs <- nrow(obs)
-  obs <- t(obs)
-  n_dim <- nrow(precmat)
-  score_vec <- nrow(n_dim)
-  return(mean(sroot_normal(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),rep(1/sqrt(diag(precmat)),n_obs))))
-}
-
-
-log_dmvn <- function(obs,mu,precmat){
-  n_dim <- nrow(precmat)
-  n_obs <- nrow(obs)
-  if(is.null(n_obs)){
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*t(obs-mu)%*%precmat%*%(obs-mu))
-  }else{
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
-    #return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(diag((obs-mu)%*%precmat%*%t(obs-mu))))
-  }
-}
 
 
 
@@ -152,7 +65,7 @@ loo_score(m,rep(2,2),Matrix(precmat,sparse=TRUE))
 
 loo_score_2(m,rep(2,2),Matrix(precmat,sparse=TRUE))
 loo_score_sapply(m,rep(2,2),Matrix(precmat,sparse=TRUE))
-loo_score_vecotrised(m,rep(2,2),Matrix(precmat,sparse=TRUE))
+loo_score_vectorised(m,rep(2,2),Matrix(precmat,sparse=TRUE))
 
 
 log_dmvn(m[1,],mu,precmat)
@@ -245,7 +158,7 @@ my_obj_func_3 <- function(par){
   rho <- par[1]
   #mu <- par[-1]
   mu <- rep(par[2],n)
-  return(loo_score_vecotrised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+  return(loo_score_vectorised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
 }
 
 # my_log_obj_func <- function(par){
@@ -333,7 +246,7 @@ tic()
 loo_score_sapply(m,mu,Qmat)
 toc()
 tic()
-loo_score_vecotrised(m,mu,Qmat)
+loo_score_vectorised(m,mu,Qmat)
 toc()
 
 
@@ -374,11 +287,13 @@ toc()
 
 
 
-narr_rep <- rep(2^10,1000)
+narr_rep <- rep(2^(12),1000)
 times_score_rep <- rep(0,length(narr_rep))
 times_log_rep <- rep(0,length(narr_rep))
+times_log_score_rep <- rep(0,length(narr_rep))
 o_score_list_rep <- vector("list", length(narr_rep))
 o_log_list_rep <- vector("list", length(narr_rep))
+o_log_score_list_rep <- vector("list", length(narr_rep))
 times_score_rep_2 <- rep(0,length(narr_rep))
 o_score_list_rep_2 <- vector("list", length(narr_rep))
 
@@ -419,7 +334,14 @@ for(i_n in c(1:length(narr_rep))){
     rho <- par[1]
     #mu <- par[-1]
     mu <- rep(par[2],n)
-    return(loo_score_vecotrised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    return(loo_score_vectorised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+  }
+
+  my_log_score_obj_func <- function(par){
+    rho <- par[1]
+    #mu <- par[-1]
+    mu <- rep(par[2],n)
+    return(loo_log_score(m,mu,get_prec_mat_sparse(rho,ncol(m))))
   }
 
   # my_log_obj_func <- function(par){
@@ -454,17 +376,50 @@ for(i_n in c(1:length(narr_rep))){
   times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
   o_log_list_rep[[i_n]]<-o2
 
+  starttime <- Sys.time()
+  o3<-optim(par=c(rho0,mu0),my_log_score_obj_func,control=list(maxit=50000))
+  endtime <- Sys.time()
+  times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_log_score_list_rep[[i_n]]<-o3
+
 
 }
 
+#extract estimated parameters
+score_par <- sapply(o_score_list_rep[1:378], function(o) o$par)
+log_par <- sapply(o_log_list_rep[1:378], function(o) o$par)
+log_score_par <- sapply(o_log_score_list_rep[1:378], function(o) o$par)
 
-score_par <- sapply(o_score_list_rep[1:42], function(o) o$par)
-log_par <- sapply(o_log_list_rep[1:42], function(o) o$par)
+#Check if all optimisations converged
+sum(sapply(o_score_list_rep[1:378], function(o) o$convergence))
+sum(sapply(o_log_list_rep[1:378], function(o) o$convergence))
+sum(sapply(o_log_score_list_rep[1:378], function(o) o$convergence))
 
-par_df <- data.frame(method=rep(c("score","log"),each=42), mu = c(score_par[1,],log_par[1,]), rho = c(score_par[2,],log_par[2,]))
-ggplot(par_df,aes(x=mu,y=rho,color=method))+geom_point()
+#Join results in dataframe
+par_df <- data.frame(method=rep(c("Sroot","LL","Slog"),each=378), mu = c(score_par[1,],log_par[1,],log_score_par[1,]), rho = c(score_par[2,],log_par[2,],log_score_par[2,]), run.time=c(times_score_rep[1:378],times_log_rep[1:378],times_log_score_rep[1:378]),i=rep(c(1:378),3))
+ggplot(par_df,aes(x=mu,y=rho,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")
+
+ggplot(par_df,aes(x=mu,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+ scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+ggplot(par_df,aes(x=rho,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+ scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+ggplot(par_df[par_df$run.time<1000,],aes(x=i,y=run.time,color=method,shape=method))+geom_point(alpha=0.75)+ scale_color_brewer(palette = "Dark2")
+ggplot(par_df[par_df$run.time<1000,],aes(x=run.time,color=method,fill=method))+geom_histogram(alpha=0.5,position="identity")+ scale_color_brewer(palette = "Dark2")+ scale_fill_brewer(palette = "Dark2")
+
 
 plot(score_par[1,],log_par[1,])
 abline(a=0,b=1)
 plot(score_par[2,],log_par[2,])
 abline(a=0,b=1)
+
+
+s1<-0
+s2<-0
+Qmatp<-get_prec_mat_sparse(o1$par[1],n)
+for(i in c(1:n)){
+  for(j in c(1:n)){
+    s1<-s1+mean(Qmatp[i,j]*m[,i])
+    s2<-s2+Qmat[i,j]
+  }
+}
+s1/s2-o1$par[2]
+
