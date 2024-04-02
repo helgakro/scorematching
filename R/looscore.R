@@ -98,12 +98,13 @@ log_dmvn <- function(obs,mu,precmat){
   }
 }
 
-loo_score_vectorised_eps <- function(obs, mu, precmat,sigma){
+loo_score_vectorised_eps <- function(obs, mu, precmat,sigma,A){
   n_obs <- nrow(obs)
   obs <- t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
-  return(mean(sroot_normal(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
+  Qeps <- Diagonal(n_dim)/sigma^2
+  return(mean(sroot_normal(c(obs),as.vector(Qeps%*%((mu-obs))/diag(precmat))+c(obs)/sigma^2+(1-1/sigma^2)*c(mu),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
 }
 
 loo_log_score_eps <- function(obs, mu, precmat,sigma){

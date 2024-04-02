@@ -30,7 +30,7 @@ repeated_inference_norm_resp <- function(n_mesh,n_rep,Q,n_outlier=0,outlier_val=
       Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
       mux <- mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-      return(loo_score_vectorised_eps(m,mux,Qxy,sigma_val))
+      return(loo_score_vectorised_eps(m,mux,Qxy,sigma_val,I))
     }
 
     my_log_score_obj_func <- function(par){
