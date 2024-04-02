@@ -64,3 +64,32 @@ p.hist.rho<-ggplot(par_df,aes(x=rho,fill=method,color=method))+geom_histogram(al
 p.time <- ggplot(par_df,aes(x=i,y=run.time,color=method,shape=method))+geom_point(alpha=0.75)+ scale_color_brewer(palette = "Dark2")
 p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_histogram(alpha=0.5,position="identity")+ scale_color_brewer(palette = "Dark2")+ scale_fill_brewer(palette = "Dark2")
 
+
+
+################################# normal response model once
+
+n <- mesh_sim$n
+mu<- rep(0,n)
+I<-Diagonal(n)
+m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
+m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
+#m[,1]<-4
+if(n_outlier>0){ #add outliers
+  m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
+}
+
+my_obj_func_3 <- function(par){
+  theta <- par
+  mu <- rep(0,n)
+  Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+  mux <- mu
+  #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+  return(loo_score_vectorised_eps(m,mux,Qxy,sigma_val,I))
+}
+
+kappa0<-1
+tau0<-0.1
+
+
+starttime <- Sys.time()
+o1<-optim(par=c(kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
