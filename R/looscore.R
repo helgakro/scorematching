@@ -114,6 +114,10 @@ inv_sherman_morrison<- function(invQ,u,v){
   return(invQ-(invQ%*%u%*%t(v)%*%invQ)/as.numeric(1+t(v)%*%invQ%*%u))
 }
 
+inv_sherman_morrison_I<- function(invQ,i,sigma){
+  return(invQ+(invQ[,i]%*%t(invQ[i,])/sigma^2)/(1+invQ[i,i]))
+}
+
 loo_log_score_eps <- function(obs, mu, precmat,sigma){
   n_obs <- nrow(obs)
   obs <- t(obs)

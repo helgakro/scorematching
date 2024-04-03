@@ -109,20 +109,58 @@ Ahat <- function(A,i){
   return(Ahat)
 }
 
-i <-3
 Qxy <- Q + t(A)%*%Qe%*%A
 invQxy <- solve(Qxy)
-Qxyhat <- Q + t(Ahat(A,i))%*%Qe%*%Ahat(A,i)
-invQxyhat <- solve(Qxyhat)
+
 invQe <- solve(Qe)
+invQe <- solve(Qe[-1,-1]) #n-1 dimensions
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i) mu + inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])%*%t(A[-i,])%*%invQe[-i,-i]%*%(A[-i,]%*%t(m)-A[-i,]%*%mu))
+params<-sapply(c(1:nrow(Q)),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])%*%A[i,]+sigma_val^2)))
+toc()
+
+tic()
+  invQxyi<- lapply(c(1:nrow(Q)),function(i) inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,]))
+  muxyi <- sapply(c(1:nrow(Q)),function(i) mu + invQxyi[[i]]%*%t(A[-i,])%*%invQe[-i,-i]%*%(A[-i,]%*%t(m)-A[-i,]%*%mu))
+  params<-sapply(c(1:nrow(Q)),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%invQxyi[[i]]%*%A[i,]+sigma_val^2)))
+toc()
+
+
+tic()
+for (i in c(1:nrow(Q))){
+  invQxyi<- inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])
+}
+toc()
+
+(invQ-(invQ%*%(0.5*A[i,])%*%t(-0.5*A[i,])%*%invQ)/as.numeric(1+t(-0.5*A[i,])%*%invQ%*%(0.5*A[i,])))
+
+tic()
+bla<-apply(A,1,function(x) (invQxy-(invQxy%*%(0.5*x)%*%t(-0.5*x)%*%invQxy)/as.numeric(1+t(-0.5*x)%*%invQxy%*%(0.5*x))))
+toc()
+
+tic()
+for (i in c(1:nrow(Q))){
+  invQxyi<- inv_sherman_morrison_I(invQxy,i)
+}
+toc()
+
+tic()
+  invQxyi<- sapply(c(1:nrow(Q)),function(i)inv_sherman_morrison_I(invQxy,i,sigma_val))
+toc()
+
+
+tic()
+for (i in c(1:nrow(Q))){
 invQxyi<- inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])
 
-max(abs(invQxyi-invQxyhat))
+#max(abs(invQxyi-invQxyhat))
 
-muxyi <- mu + invQxyi%*%t(Ahat(A,i))%*%invQe%*%(Ahat(A,i)%*%t(m)-Ahat(A,i)%*%mu)
-as.numeric(A[i,]%*%muxyi)
-as.numeric(A[i,]%*%invQxyi%*%A[i,]+sigma_val^2)
+# muxyi <- mu + invQxyi%*%t(Ahat(A,i))%*%invQe%*%(Ahat(A,i)%*%t(m)-Ahat(A,i)%*%mu)
+muxyi <- mu + invQxyi%*%t(A[-i,])%*%invQe[-i,-i]%*%(A[-i,]%*%t(m)-A[-i,]%*%mu)
 
+params<-c(as.numeric(A[i,]%*%muxyi),as.numeric(A[i,]%*%invQxyi%*%A[i,]+sigma_val^2))
+}
+toc()
 
 invQxy
 (invQxy%*%A[i,]%*%t(A[i,])%*%invQxy)/as.numeric(1+t(A[i,])%*%invQxy%*%A[i,])
