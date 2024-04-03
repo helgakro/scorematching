@@ -93,3 +93,48 @@ tau0<-0.1
 
 starttime <- Sys.time()
 o1<-optim(par=c(kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
+
+
+
+##################################
+
+Q
+A=Diagonal(nrow(Q))
+Qe = 0.5^2*Diagonal(nrow(Q))
+
+Ahat <- function(A,i){
+  Ahat <- A
+  Ahat[i,]<-0
+  return(Ahat)
+}
+
+i <-3
+Qxy <- Q + t(A)%*%Qe%*%A
+invQxy <- solve(Qxy)
+Qxyhat <- Q + t(Ahat(A,i))%*%Qe%*%Ahat(A,i)
+invQxyhat <- solve(Qxyhat)
+invQe <- solve(Qe)
+invQxyi<- inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])
+
+max(abs(invQxyi-invQxyhat))
+
+muxyi <- mu + invQxyi%*%t(Ahat(A,i))%*%invQe%*%(Ahat(A,i)%*%t(m)-Ahat(A,i)%*%mu)
+as.numeric(A[i,]%*%muxyi)
+as.numeric(A[i,]%*%invQxyi%*%A[i,]+sigma_val^2)
+
+
+invQxy
+(invQxy%*%A[i,]%*%t(A[i,])%*%invQxy)/as.numeric(1+t(A[i,])%*%invQxy%*%A[i,])
+# Ahat=A
+# Ahat[2,]=0
+# Ai = A[2,]
+#
+#
+# t(A)%*%Qe%*%A-t(Ahat)%*%Qe%*%Ahat
+# Ai%*%t(Ai)/2
+#
+#
+# inla.qinv(Q) #compute diagonals of the inverse of the precision matrix
+
+

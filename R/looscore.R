@@ -104,7 +104,14 @@ loo_score_vectorised_eps <- function(obs, mu, precmat,sigma,A){
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   Qeps <- Diagonal(n_dim)/sigma^2
+  Qxy <- precmat + t(A)%*%Qeps%*%A
+  invQxy <- solve(Qxy)
+  invQxyi<- inv_sherman_morrison(Q,A[i,],A[i,])/sigma^2
   return(mean(sroot_normal(c(obs),as.vector(Qeps%*%((mu-obs))/diag(precmat))+c(obs)/sigma^2+(1-1/sigma^2)*c(mu),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
+}
+
+inv_sherman_morrison<- function(invQ,u,v){
+  return(invQ-(invQ%*%u%*%t(v)%*%invQ)/as.numeric(1+t(v)%*%invQ%*%u))
 }
 
 loo_log_score_eps <- function(obs, mu, precmat,sigma){
