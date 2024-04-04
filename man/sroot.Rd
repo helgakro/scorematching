@@ -4,14 +4,14 @@
 \alias{sroot}
 \title{Compute s_root score}
 \usage{
-sroot(y, params, type = "r-Pareto")
+sroot(y, params, type = "r-Pareto", a = 0, b = 1)
 }
 \arguments{
 \item{y}{observations}
 
 \item{params}{model parameters}
 
-\item{type}{model type, can be one of "r-Pareto"}
+\item{type}{model type, can be one of "r-Pareto", "norm"}
 }
 \value{
 s_root score
