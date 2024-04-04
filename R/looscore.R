@@ -24,7 +24,7 @@ loo_score_old <- function(obs, mu, precmat){
 conditional_mvn <- function(i,x,params){
   mu <- params$mu
   precmat <- params$prec
-  tmp<-t(precmat[i,-i]*t(x[,-i]-mu[-i]))
+  tmp<-Matrix::t(precmat[i,-i]*Matrix::t(x[,-i]-mu[-i]))
   if(is.matrix(tmp)){
     mu_new <- mu[i]-rowSums(tmp)/precmat[i,i]
   }else{
@@ -47,7 +47,7 @@ loo_score <- function(obs, mu, precmat){
 
 loo_score_2 <- function(obs, mu, precmat){
   n_obs <- nrow(obs)
-  obs <- t(obs)
+  obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   Qmu <- precmat%*%mu #matrix multiplication
@@ -61,7 +61,7 @@ loo_score_2 <- function(obs, mu, precmat){
 
 loo_score_sapply <- function(obs, mu, precmat){
   n_obs <- nrow(obs)
-  obs <- t(obs)
+  obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   Qmu <- precmat%*%mu #matrix multiplication
@@ -72,7 +72,7 @@ loo_score_sapply <- function(obs, mu, precmat){
 
 loo_score_vectorised <- function(obs, mu, precmat){
   n_obs <- nrow(obs)
-  obs <- t(obs)
+  obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   return(mean(sroot_normal(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),rep(1/sqrt(diag(precmat)),n_obs))))
@@ -80,7 +80,7 @@ loo_score_vectorised <- function(obs, mu, precmat){
 
 loo_log_score <- function(obs, mu, precmat){
   n_obs <- nrow(obs)
-  obs <- t(obs)
+  obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   return(-mean(log(dnorm(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),rep(1/sqrt(diag(precmat)),n_obs)))))
@@ -91,36 +91,53 @@ log_dmvn <- function(obs,mu,precmat){
   n_dim <- nrow(precmat)
   n_obs <- nrow(obs)
   if(is.null(n_obs)){
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*t(obs-mu)%*%precmat%*%(obs-mu))
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
   }else{
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(Matrix::t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
     #return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(diag((obs-mu)%*%precmat%*%t(obs-mu))))
   }
 }
 
-loo_score_vectorised_eps <- function(obs, mu, precmat,sigma,A){
+# loo_score_vectorised_eps <- function(obs, mu, precmat,sigma,A){
+#   n_obs <- nrow(obs)
+#   obs <- t(obs)
+#   n_dim <- nrow(precmat)
+#   score_vec <- nrow(n_dim)
+#   Qeps <- Diagonal(n_dim)/sigma^2
+#   Qxy <- precmat + t(A)%*%Qeps%*%A
+#   invQxy <- solve(Qxy)
+#   invQxyi<- inv_sherman_morrison(Q,A[i,],A[i,])/sigma^2
+#   return(mean(sroot_normal(c(obs),as.vector(Qeps%*%((mu-obs))/diag(precmat))+c(obs)/sigma^2+(1-1/sigma^2)*c(mu),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
+# }
+
+loo_score_vectorised_eps <- function(obs, mu, Qx,sigma,A){
   n_obs <- nrow(obs)
-  obs <- t(obs)
-  n_dim <- nrow(precmat)
+  obs <- Matrix::t(obs)
+  n_dim <- nrow(Qx)
   score_vec <- nrow(n_dim)
   Qeps <- Diagonal(n_dim)/sigma^2
-  Qxy <- precmat + t(A)%*%Qeps%*%A
+  invQe <- solve(Qeps[-1,-1])
+  Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A
   invQxy <- solve(Qxy)
-  invQxyi<- inv_sherman_morrison(Q,A[i,],A[i,])/sigma^2
-  return(mean(sroot_normal(c(obs),as.vector(Qeps%*%((mu-obs))/diag(precmat))+c(obs)/sigma^2+(1-1/sigma^2)*c(mu),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
+  invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,]/sigma,-A[i,]/sigma))
+  muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,])%*%invQe%*%(obs[-i]-A[-i,]%*%mu))
+  params<-sapply(c(1:n_dim),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%invQxyi[[i]]%*%A[i,]+sigma^2)))
+  return(mean(sroot_normal(c(obs),params[1,],params[2,])))
 }
 
+
+
 inv_sherman_morrison<- function(invQ,u,v){
-  return(invQ-(invQ%*%u%*%t(v)%*%invQ)/as.numeric(1+t(v)%*%invQ%*%u))
+  return(invQ-(invQ%*%u%*%Matrix::t(v)%*%invQ)/as.numeric(1+Matrix::t(v)%*%invQ%*%u))
 }
 
 inv_sherman_morrison_I<- function(invQ,i,sigma){
-  return(invQ+(invQ[,i]%*%t(invQ[i,])/sigma^2)/(1+invQ[i,i]))
+  return(invQ+(invQ[,i]%*%Matrix::t(invQ[i,])/sigma^2)/(1+invQ[i,i]))
 }
 
 loo_log_score_eps <- function(obs, mu, precmat,sigma){
   n_obs <- nrow(obs)
-  obs <- t(obs)
+  obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
   return(-mean(log(dnorm(c(obs),as.vector(precmat%*%((mu-obs))/diag(precmat))+c(obs),rep(1/sqrt(diag(precmat)),n_obs)+sigma^2))))
@@ -134,9 +151,9 @@ log_dmvn_eps <- function(obs,mu,precmat,sigma){
     precmat <- precmat + Diagonal(n_dim)/sigma^2
   }
   if(is.null(n_obs)){
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*t(obs-mu)%*%precmat%*%(obs-mu))
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
   }else{
-    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
+    return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(Matrix::t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
     #return(-n_dim/2*log(2*pi)+1/2*log(det(precmat))-1/2*mean(diag((obs-mu)%*%precmat%*%t(obs-mu))))
   }
 }
