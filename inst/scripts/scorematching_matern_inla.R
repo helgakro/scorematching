@@ -16,11 +16,11 @@ Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 
 # n_mesh= mesh_sim$n
 n_rep=100
-res_no_outliers <- repeated_inference(mesh_sim$n,n_rep,Q) #no outliers
-res_50_outliers <- repeated_inference(mesh_sim$n,n_rep,Q,50,4) #5 outliers (50%)
-res_100_outliers <- repeated_inference(mesh_sim$n,n_rep,Q,100,4) #10 outliers (100%)
-res_25_outliers <- repeated_inference(mesh_sim$n,n_rep,Q,25,4) #5 outliers (25%)
-res_25_outliers <- repeated_inference(mesh_sim$n,n_rep,Q,75,4) #5 outliers (75%)
+res_no_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q) #no outliers
+res_50_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,50,4) #5 outliers (50%)
+res_100_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,100,4) #10 outliers (100%)
+res_25_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,25,4) #5 outliers (25%)
+res_25_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,75,4) #5 outliers (75%)
 
 p.res_no_outliers <- plot_results(res_no_outliers)
 p.res_5_outliers <- plot_results(res_5_outliers)
@@ -38,7 +38,7 @@ ggsave("GMRF_time_hist_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.time.his
 
 ################# normal response model
 
-res_no_outliers_nresp <- repeated_inference_norm_resp(mesh_sim$n,n_rep,Q,sigma_val=0.2) #no outliers
+res_no_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=0.00000001) #no outliers 0.0002
 p.res_no_outliers_nresp <- plot_results(res_no_outliers_nresp)
 p.res_no_outliers_nresp$p.scatter
 p.res_no_outliers_nresp$p.hist.mu
@@ -48,7 +48,7 @@ p.res_no_outliers_nresp$p.time.hist
 
 score_par <- sapply(res_no_outliers_nresp$o_sroot[1:n_res], function(o) o$par)
 print(sum(sapply(res_no_outliers_nresp$o_sroot[1:n_res], function(o) o$convergence)))
-par_df <- data.frame(method=rep(c("Sroot"),each=n_res), mu = c(score_par[1,]), rho = c(score_par[2,]), run.time=c(times_score_rep[1:n_res]),i=rep(c(1:n_res),1))
+par_df <- data.frame(method=rep(c("Sroot"),each=n_res), mu = c(score_par[1,]), rho = c(score_par[2,]), run.time=c(res_no_outliers_nresp$times_sroot[1:n_res]),i=rep(c(1:n_res),1))
 par_df_mean <- par_df %>%
   group_by(method) %>%
   summarize(meanmu = mean(mu),meanrho = mean(rho))
@@ -67,34 +67,54 @@ p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_hist
 
 
 ################################# normal response model once
-
+spde$param.inla$theta.initial
+Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
+sigma_val <- 0.00000001
 n <- mesh_sim$n
 mu<- rep(0,n)
 I<-Diagonal(n)
+A<-Diagonal(n)
 m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
 m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
 #m[,1]<-4
-if(n_outlier>0){ #add outliers
-  m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
-}
+# if(n_outlier>0){ #add outliers
+#   m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
+# }
 
-my_obj_func_3 <- function(par){
+
+
+
+my_obj_func_new <- function(par){
+  print(par)
   theta <- par
   mu <- rep(0,n)
-  Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+  #Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+  Qx <- inla.spde.precision(spde, theta=theta)
   mux <- mu
   #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-  return(loo_score_vectorised_eps(m,mux,Qxy,sigma_val,I))
+  return(loo_score_vectorised_eps(m,mux,Qx,sigma_val,A))
 }
 
 kappa0<-1
 tau0<-0.1
 
 
-starttime <- Sys.time()
-o1<-optim(par=c(kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+o1<-optim(par=c(kappa0,tau0),my_obj_func_new,control=list(maxit=50000))
 
+spde$param.inla$theta.initial
 
+##################### Test S-M
+
+A <- Diagonal(nrow(Q))
+Qeps <- Diagonal(nrow(Q))/sigma_val^2
+Qxy <- Q + t(A)%*%Qeps%*%A
+invQxy <- solve(Qxy)
+Qeps <- Qeps[-1,-1]
+invQe <- solve(Qeps)
+
+a1<-inv_sherman_morrison(invQxy,A[1,]/sigma_val,-A[1,]/sigma_val)
+a2<-solve(Q + t(A[-1,])%*%Qeps%*%A[-1,])
+min(a1-a2)
 
 
 ##################################
@@ -120,7 +140,7 @@ params<-sapply(c(1:nrow(Q)),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.nume
 toc()
 
 tic()
-  invQxyi<- lapply(c(1:nrow(Q)),function(i) inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,]))
+  invQxyi<- sapply(c(1:nrow(Q)),function(i) inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,]))
   muxyi <- sapply(c(1:nrow(Q)),function(i) mu + invQxyi[[i]]%*%t(A[-i,])%*%invQe[-i,-i]%*%(A[-i,]%*%t(m)-A[-i,]%*%mu))
   params<-sapply(c(1:nrow(Q)),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%invQxyi[[i]]%*%A[i,]+sigma_val^2)))
 toc()
@@ -176,3 +196,17 @@ invQxy
 # inla.qinv(Q) #compute diagonals of the inverse of the precision matrix
 
 
+
+
+###################### parallelise
+
+library(parallel)
+library(MASS)
+numCores <- detectCores()
+numCores
+system.time(
+  results <- lapply(c(1:nrow(A)),function(i) (invQxy-(invQxy%*%(0.5*A[i,])%*%t(-0.5*A[i,])%*%invQxy)/as.numeric(1+t(-0.5*A[i,])%*%invQxy%*%(0.5*A[i,]))))
+)
+system.time(
+  results <- mclapply(c(1:nrow(A)),function(i) (invQxy-(invQxy%*%(0.5*A[i,])%*%t(-0.5*A[i,])%*%invQxy)/as.numeric(1+t(-0.5*A[i,])%*%invQxy%*%(0.5*A[i,]))))
+)
