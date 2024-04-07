@@ -210,3 +210,42 @@ system.time(
 system.time(
   results <- mclapply(c(1:nrow(A)),function(i) (invQxy-(invQxy%*%(0.5*A[i,])%*%t(-0.5*A[i,])%*%invQxy)/as.numeric(1+t(-0.5*A[i,])%*%invQxy%*%(0.5*A[i,]))))
 )
+
+
+
+#################################33
+#
+#
+#
+
+Q
+A=Diagonal(nrow(Q))
+Qe = 0.5^2*Diagonal(nrow(Q))
+
+Ahat <- function(A,i){
+  Ahat <- A
+  Ahat[i,]<-0
+  return(Ahat)
+}
+
+Qxy <- Q + t(A)%*%Qe%*%A
+invQxy <- solve(Qxy)
+
+invQe <- solve(Qe)
+invQe <- solve(Qe[-1,-1, drop = FALSE]) #n-1 dimensions
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i)  inv_sherman_morrison(invQxy,0.5*A[i,, drop = FALSE],-0.5*A[i,, drop = FALSE]))
+toc()
+
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i)  inv_sherman_morrison(invQxy,t(0.5*A[i,]),-0.5*A[i,]))
+toc()
+
+
+params<-sapply(c(1:nrow(Q)),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%inv_sherman_morrison(invQxy,0.5*A[i,],-0.5*A[i,])%*%A[i,]+sigma_val^2)))
+toc()
+
+
+i<-1
+(invQxy-(invQxy%*%(0.5*A[i,])%*%t(-0.5*A[i,])%*%invQxy)/as.numeric(1+t(-0.5*A[i,])%*%invQxy%*%(0.5*A[i,])))
+(invQxy-(invQxy%*%t(0.5*A[i,, drop = FALSE])%*%(-0.5*A[i,, drop = FALSE])%*%invQxy)/as.numeric(1+t(-0.5*A[i,,drop=FALSE])%*%invQxy%*%(0.5*A[i,])))
