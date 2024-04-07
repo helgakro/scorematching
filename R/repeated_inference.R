@@ -91,6 +91,19 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
 
 
+#' Title
+#'
+#' @param spde
+#' @param n_mesh
+#' @param n_rep
+#' @param Q
+#' @param n_outlier
+#' @param outlier_val
+#'
+#' @return
+#' @export
+#'
+#' @examples
 repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
@@ -170,7 +183,10 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL)
 }
 
 #n_res <- 100 #set n_res to smaller value if we want to use part of results
-
+#' @import ggplot2
+#' @import dplyr
+#'
+#' @export
 plot_results <- function(res,n_res=NULL){
 
   times_score_rep <- res$times_sroot
@@ -215,7 +231,9 @@ plot_results <- function(res,n_res=NULL){
 
 }
 
-
+#' @import cowplot ggplot2
+#'
+#' @export
 plot_grid_2 <- function(p1,p2){
   prow <- plot_grid(
     p1 + theme(legend.position="none"),
@@ -238,6 +256,9 @@ plot_grid_2 <- function(p1,p2){
   return(plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .1)))
 }
 
+#' @import cowplot ggplot2
+#'
+#' @export
 plot_grid_3 <- function(p1,p2,p3){
   prow <- plot_grid(
     p1 + theme(legend.position="none"),
@@ -265,6 +286,10 @@ plot_grid_3 <- function(p1,p2,p3){
 # plot(score_par[2,],log_par[2,])
 # abline(a=0,b=1)
 
+
+#' @import cowplot ggplot2
+#'
+#' @export
 plot_grid_4 <- function(p1,p2,p3,p4){
   prow <- plot_grid(
     p4 + theme(legend.position="none"),
