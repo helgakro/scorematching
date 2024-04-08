@@ -116,12 +116,14 @@ loo_score_vectorised_eps <- function(obs, mu, Qx,sigma,A){
   n_dim <- nrow(Qx)
   score_vec <- nrow(n_dim)
   Qeps <- Matrix::Diagonal(n_dim)/sigma^2
-  invQe <- solve(Qeps[-1,-1])
   Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A
   invQxy <- solve(Qxy)
-  invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,]/sigma,-A[i,]/sigma))
-  muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,])%*%invQe%*%(obs[-i]-A[-i,]%*%mu))
-  params<-sapply(c(1:n_dim),function(i) c(as.numeric(A[i,]%*%muxyi[[i]]),as.numeric(A[i,]%*%invQxyi[[i]]%*%A[i,]+sigma^2)))
+  Qeps <- Matrix::Diagonal(n_dim-1)/sigma^2
+  invQe <- solve(Qeps)
+  #invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,,drop=FALSE]/sigma,-A[i,,drop=FALSE]/sigma))
+  invQxyi<- lapply(c(1:n_dim),function(i) solve(Qx + Matrix::t(A[-i,,drop=FALSE])%*%Qeps%*%A[-i,,drop=FALSE]))
+  muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,,drop=FALSE])%*%invQe%*%(obs[-i]-A[-i,,drop=FALSE]%*%mu))
+  params<-sapply(c(1:n_dim),function(i) c(as.numeric(A[i,,drop=FALSE]%*%muxyi[[i]]),sqrt(as.numeric(A[i,,drop=FALSE]%*%invQxyi[[i]]%*%Matrix::t(A[i,,drop=FALSE])+sigma^2))))
   return(mean(sroot_normal(c(obs),params[1,],params[2,])))
 }
 
@@ -129,7 +131,7 @@ loo_score_vectorised_eps <- function(obs, mu, Qx,sigma,A){
 
 inv_sherman_morrison<- function(invQ,u,v){
   #return(invQ-(invQ%*%u%*%Matrix::t(v)%*%invQ)/as.numeric(1+Matrix::t(v)%*%invQ%*%u))
-  return(invQ-(invQ%*%Matrix::t(u)%*%v%*%invQ)/as.numeric(1+v%*%invQ%*%Matrix::t(u)))
+  return(invQ-(invQ%*%(Matrix::t(u)%*%v)%*%invQ)/as.numeric(1+v%*%invQ%*%Matrix::t(u)))
 }
 
 inv_sherman_morrison_I<- function(invQ,i,sigma){

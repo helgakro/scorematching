@@ -69,7 +69,7 @@ p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_hist
 ################################# normal response model once
 spde$param.inla$theta.initial
 Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
-sigma_val <- 0.00000001
+sigma_val <- 0.001
 n <- mesh_sim$n
 mu<- rep(0,n)
 I<-Diagonal(n)
@@ -101,7 +101,10 @@ tau0<-0.1
 
 o1<-optim(par=c(kappa0,tau0),my_obj_func_new,control=list(maxit=50000))
 
+
+
 spde$param.inla$theta.initial
+my_obj_func_new(spde$param.inla$theta.initial)
 
 ##################### Test S-M
 
@@ -229,12 +232,46 @@ Ahat <- function(A,i){
 }
 
 Qxy <- Q + t(A)%*%Qe%*%A
+tic()
 invQxy <- solve(Qxy)
+toc()
 
 invQe <- solve(Qe)
 invQe <- solve(Qe[-1,-1, drop = FALSE]) #n-1 dimensions
 tic()
-muxyi <- sapply(c(1:nrow(Q)),function(i)  inv_sherman_morrison(invQxy,0.5*A[i,, drop = FALSE],-0.5*A[i,, drop = FALSE]))
+resA <- sapply(c(1:nrow(Q)),function(i)  inv_sherman_morrison(invQxy,0.5*A[i,, drop = FALSE],-0.5*A[i,, drop = FALSE]))
+toc()
+
+tic()
+resB <- sapply(c(1:nrow(Q)),function(i)  solve(Qxy-0.5^2*(t(A[i,, drop = FALSE])%*%A[i,, drop = FALSE])))
+toc()
+
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i)  solve(Qxy))
+toc()
+
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i)  inv_sherman_morrison_I(invQxy,i,0.5))
+toc()
+
+tic()
+resC<-sapply(c(1:nrow(Q)),function(i) invQxy%*%(Matrix::t(A[i,, drop = FALSE])%*%A[i,, drop = FALSE])%*%invQxy)
+toc()
+
+tic()
+resC<-sapply(c(1:nrow(Q)),function(i) invQxy%*%(A[i,]%*%Matrix::t(A[i,]))%*%invQxy)
+toc()
+
+tic()
+resD<-sapply(c(1:nrow(Q)),function(i) (invQxy%*%Matrix::t(A[i,, drop = FALSE]))%*%(A[i,, drop = FALSE]%*%invQxy))
+toc()
+
+tic()
+resE<-sapply(c(1:nrow(Q)),function(i) invQxy%*%Matrix::t(A[i,, drop = FALSE])%*%A[i,, drop = FALSE]%*%invQxy)
+toc()
+
+tic()
+muxyi <- sapply(c(1:nrow(Q)),function(i)  invQxy+invQxy[i,i])
 toc()
 
 tic()
