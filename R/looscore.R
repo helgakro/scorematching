@@ -110,20 +110,38 @@ log_dmvn <- function(obs,mu,precmat){
 #   return(mean(sroot_normal(c(obs),as.vector(Qeps%*%((mu-obs))/diag(precmat))+c(obs)/sigma^2+(1-1/sigma^2)*c(mu),sqrt(rep(1/diag(precmat),n_obs)+sigma^2))))
 # }
 
-loo_score_vectorised_eps <- function(obs, mu, Qx,sigma,A){
-  n_obs <- nrow(obs)
-  obs <- Matrix::t(obs)
-  n_dim <- nrow(Qx)
+loo_score_vectorised_eps_old <- function(obs, mu, Qx,sigma,A){
+  n_obs <- nrow(obs) #how many observations of the field
+  obs <- Matrix::t(obs) #each column represents an observation of the field
+  n_dim <- nrow(Qx) #number of "observed" points in field
   score_vec <- nrow(n_dim)
-  Qeps <- Matrix::Diagonal(n_dim)/sigma^2
-  Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A
-  invQxy <- solve(Qxy)
-  Qeps <- Matrix::Diagonal(n_dim-1)/sigma^2
-  invQe <- solve(Qeps)
+  Qeps <- Matrix::Diagonal(n_dim)/sigma^2 #noise precision
+  Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A #full conditional precision matrix
+  invQxy <- solve(Qxy) #inverse of invQxy, to be used by the S-M formula
+  Qeps <- Matrix::Diagonal(n_dim-1)/sigma^2 #noise precision for n-1 dimension
+  invQe <- solve(Qeps) #inverse noise precision for n-1 dimension
   #invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,,drop=FALSE]/sigma,-A[i,,drop=FALSE]/sigma))
-  invQxyi<- lapply(c(1:n_dim),function(i) solve(Qx + Matrix::t(A[-i,,drop=FALSE])%*%Qeps%*%A[-i,,drop=FALSE]))
+  invQxyi<- lapply(c(1:n_dim),function(i) solve(Qx + Matrix::t(A[-i,,drop=FALSE])%*%Qeps%*%A[-i,,drop=FALSE])) #inverse precision matrix, independent on observations
   muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,,drop=FALSE])%*%invQe%*%(obs[-i]-A[-i,,drop=FALSE]%*%mu))
   params<-sapply(c(1:n_dim),function(i) c(as.numeric(A[i,,drop=FALSE]%*%muxyi[[i]]),sqrt(as.numeric(A[i,,drop=FALSE]%*%invQxyi[[i]]%*%Matrix::t(A[i,,drop=FALSE])+sigma^2))))
+  return(mean(sroot_normal(c(obs),params[1,],params[2,])))
+}
+
+loo_score_vectorised_eps <- function(obs, mu, Qx,sigma,A){
+  n_obs <- nrow(obs) #how many observations of the field
+  obs <- Matrix::t(obs) #each column represents an observation of the field
+  n_dim <- nrow(Qx) #number of "observed" points in field
+  score_vec <- nrow(n_dim)
+  Qeps <- Matrix::Diagonal(n_dim)/sigma^2 #noise precision
+  Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A #full conditional precision matrix
+  invQxy <- solve(Qxy) #inverse of invQxy, to be used by the S-M formula
+  Qeps <- Matrix::Diagonal(n_dim-1)/sigma^2 #noise precision for n-1 dimension
+  invQe <- solve(Qeps) #inverse noise precision for n-1 dimension
+  #invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,,drop=FALSE]/sigma,-A[i,,drop=FALSE]/sigma))
+  invQxyi<- lapply(c(1:n_dim),function(i) solve(Qx + Matrix::t(A[-i,,drop=FALSE])%*%Qeps%*%A[-i,,drop=FALSE])) #inverse precision matrix, independent on observations
+  # invQxyi <- array(as.numeric(unlist(invQxyi)),dim=c(n_dim,n_dim,n_dim))
+  muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,,drop=FALSE])%*%invQe%*%(obs[-i,]-A[-i,,drop=FALSE]%*%mu))
+  params<-do.call(cbind,lapply(c(1:n_dim),function(i) rbind(as.numeric(A[i,,drop=FALSE]%*%muxyi[[i]]),rep(sqrt(as.numeric(A[i,,drop=FALSE]%*%invQxyi[[i]]%*%Matrix::t(A[i,,drop=FALSE])+sigma^2)),n_obs))))
   return(mean(sroot_normal(c(obs),params[1,],params[2,])))
 }
 
@@ -138,12 +156,23 @@ inv_sherman_morrison_I<- function(invQ,i,sigma){
   return(invQ+(invQ[,i]%*%Matrix::t(invQ[i,])/sigma^2)/(1+invQ[i,i]))
 }
 
-loo_log_score_eps <- function(obs, mu, precmat,sigma){
-  n_obs <- nrow(obs)
-  obs <- Matrix::t(obs)
-  n_dim <- nrow(precmat)
+loo_log_score_eps <- function(obs, mu, Qx,sigma,A){
+  n_obs <- nrow(obs) #how many observations of the field
+  obs <- Matrix::t(obs) #each column represents an observation of the field
+  n_dim <- nrow(Qx) #number of "observed" points in field
   score_vec <- nrow(n_dim)
-  return(-mean(log(stats::dnorm(c(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+c(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs)+sigma^2))))
+  Qeps <- Matrix::Diagonal(n_dim)/sigma^2 #noise precision
+  Qxy <- Qx + Matrix::t(A)%*%Qeps%*%A #full conditional precision matrix
+  invQxy <- solve(Qxy) #inverse of invQxy, to be used by the S-M formula
+  Qeps <- Matrix::Diagonal(n_dim-1)/sigma^2 #noise precision for n-1 dimension
+  invQe <- solve(Qeps) #inverse noise precision for n-1 dimension
+  #invQxyi<- lapply(c(1:n_dim),function(i) inv_sherman_morrison(invQxy,A[i,,drop=FALSE]/sigma,-A[i,,drop=FALSE]/sigma))
+  invQxyi<- lapply(c(1:n_dim),function(i) solve(Qx + Matrix::t(A[-i,,drop=FALSE])%*%Qeps%*%A[-i,,drop=FALSE])) #inverse precision matrix, independent on observations
+  # invQxyi <- array(as.numeric(unlist(invQxyi)),dim=c(n_dim,n_dim,n_dim))
+  muxyi <- lapply(c(1:n_dim),function(i) mu + invQxyi[[i]]%*%Matrix::t(A[-i,,drop=FALSE])%*%invQe%*%(obs[-i,]-A[-i,,drop=FALSE]%*%mu))
+  params<-do.call(cbind,lapply(c(1:n_dim),function(i) rbind(as.numeric(A[i,,drop=FALSE]%*%muxyi[[i]]),rep(sqrt(as.numeric(A[i,,drop=FALSE]%*%invQxyi[[i]]%*%Matrix::t(A[i,,drop=FALSE])+sigma^2)),n_obs))))
+  #return(-mean(log(stats::dnorm(c(obs),params[1,],params[2,]))))
+  return(mean(log(sqrt(2*pi)*params[2,])+0.5*((c(obs)-params[1,])/params[2,])^2))
 }
 
 

@@ -38,14 +38,16 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       return(score)
     }
 
-    # my_log_score_obj_func <- function(par){
-    #   theta <- par
-    #   mu <- rep(0,n)
-    #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
-    #   muxy <- mu
-    #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-    #   return(loo_log_score_eps(m,muxy,Qxy,sigma_val))
-    # }
+    my_log_score_obj_func <- function(par){
+      theta <- par
+      mu <- rep(0,n)
+      Qx <- inla.spde.precision(spde, theta=theta)
+      mux <- mu
+      score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+      print(score)
+      return(score)
+    }
+
     #
     # my_log_obj_func <- function(par){
     #   theta <- par
@@ -72,11 +74,11 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     # times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
     # #o_log_list_rep[[i_n]]<-o2
     #
-    # starttime <- Sys.time()
-    # #o3<-optim(par=c(kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
-    # endtime <- Sys.time()
-    # times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
-    # #o_log_score_list_rep[[i_n]]<-o3
+    starttime <- Sys.time()
+    o3<-optim(par=c(kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
+    o_log_score_list_rep[[i_n]]<-o3
 
 
   }
