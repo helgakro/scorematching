@@ -25,7 +25,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     }
 
 
-    my_obj_func_3 <- function(par){
+    my_obj_func_3_x <- function(par){
       print(par)
       theta <- par
       mu <- rep(0,n)
@@ -38,12 +38,42 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       return(score)
     }
 
-    my_log_score_obj_func <- function(par){
+    my_obj_func_3 <- function(par){
+      print(par)
       theta <- par
       mu <- rep(0,n)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
+      Qeps <- Qeps <- I/sigma_val^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
       mux <- mu
-      score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_score_vectorised(m,mux,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    # my_log_score_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qx <- inla.spde.precision(spde, theta=theta)
+    #   mux <- mu
+    #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+    #   print(score)
+    #   return(score)
+    # }
+
+    my_log_score_obj_func <- function(par){
+      print(par)
+      theta <- par
+      mu <- rep(0,n)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qeps <- Qeps <- I/sigma_val^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      mux <- mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_log_score(m,mux,Qtheta)
       print(score)
       return(score)
     }
