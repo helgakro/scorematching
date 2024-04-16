@@ -71,6 +71,7 @@ loo_score_sapply <- function(obs, mu, precmat){
 
 
 loo_score_vectorised <- function(obs, mu, precmat){
+  print("hér")
   n_obs <- nrow(obs)
   obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)

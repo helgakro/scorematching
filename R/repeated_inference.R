@@ -13,19 +13,22 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
   for(i_n in c(1:n_rep)){
 
     print(paste("Iteration",i_n))
-    n <- narr_rep[i_n]
-    mu<- rep(0,n)
+
+    n_x <-  n_mesh #narr_rep[i_n]
     if(is.null(A)){
-      A<-Diagonal(n)
-      I<-Diagonal(n)
-    }else{
-      I<-Diagonal(nrow(A))
+      A<-Diagonal(n_x)
     }
-    m<-inla.qsample(n=10, Q = Q, mu=mu) #observations of latent field
-    m <- A%*%m
-    m<- m+rnorm(n=length(m),mean = 0,sd = sigma_val) #added noise
+    n_y <- nrow(A)
+    I<-Diagonal(n_y)
+    mu<- rep(0,n_x)
+    # I<-Diagonal(n)
+    # A<-Diagonal(n)
+    # m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
+    # m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
+    n_sample <- 10
+    m<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
+    m <- A%*%m+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
     m <- Matrix::t(m)
-    n<-ncol(m)
     #m[,1]<-4
     if(n_outlier>0){ #add outliers
       m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
@@ -47,17 +50,19 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
     my_obj_func_3 <- function(par){
       print(par)
+
       sig <- exp(par[1])
       theta <- par[-1]
-      mu <- rep(0,n)
+      mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
       Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
       Qeps <- Qeps <- I/sig^2
+
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
-      mux <- mu
+      muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-      score <- loo_score_vectorised(m,mux,Qtheta)
+      score <- loo_score_vectorised(m,muy,Qtheta)
       print(score)
       return(score)
     }
@@ -74,17 +79,19 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
     my_log_score_obj_func <- function(par){
       print(par)
+
       sig <- exp(par[1])
       theta <- par[-1]
-      mu <- rep(0,n)
+      mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
       Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
       Qeps <- I/sig^2
+
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
-      mux <- mu
+      muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-      score <- loo_log_score(m,mux,Qtheta)
+      score <- loo_log_score(m,muy,Qtheta)
       print(score)
       return(score)
     }
@@ -124,6 +131,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
     starttime <- Sys.time()
     o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
     endtime <- Sys.time()
     times_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_score_list_rep[[i_n]]<-o1
