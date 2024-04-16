@@ -71,11 +71,12 @@ loo_score_sapply <- function(obs, mu, precmat){
 
 
 loo_score_vectorised <- function(obs, mu, precmat){
+  print("hér")
   n_obs <- nrow(obs)
   obs <- Matrix::t(obs)
   n_dim <- nrow(precmat)
   score_vec <- nrow(n_dim)
-  return(mean(sroot_normal(c(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+c(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs))))
+  return(mean(sroot_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs))))
 }
 
 loo_log_score <- function(obs, mu, precmat){
