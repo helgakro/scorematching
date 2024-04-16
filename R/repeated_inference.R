@@ -1,4 +1,4 @@
-repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1){
+repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
@@ -15,10 +15,17 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     print(paste("Iteration",i_n))
     n <- narr_rep[i_n]
     mu<- rep(0,n)
-    I<-Diagonal(n)
-    A<-Diagonal(n)
-    m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
-    m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
+    if(is.null(A)){
+      A<-Diagonal(n)
+      I<-Diagonal(n)
+    }else{
+      I<-Diagonal(nrow(A))
+    }
+    m<-inla.qsample(n=10, Q = Q, mu=mu) #observations of latent field
+    m <- A%*%m
+    m<- m+rnorm(n=length(m),mean = 0,sd = sigma_val) #added noise
+    m <- Matrix::t(m)
+    n<-ncol(m)
     #m[,1]<-4
     if(n_outlier>0){ #add outliers
       m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
@@ -40,11 +47,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
     my_obj_func_3 <- function(par){
       print(par)
-      theta <- par
+      sig <- exp(par[1])
+      theta <- par[-1]
       mu <- rep(0,n)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qeps <- Qeps <- I/sigma_val^2
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- Qeps <- I/sig^2
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
       mux <- mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
@@ -65,11 +74,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
     my_log_score_obj_func <- function(par){
       print(par)
-      theta <- par
+      sig <- exp(par[1])
+      theta <- par[-1]
       mu <- rep(0,n)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qeps <- Qeps <- I/sigma_val^2
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
       mux <- mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
@@ -88,24 +99,43 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
     # }
 
-    kappa0<-1
+
+    my_log_obj_func <- function(par){
+      print(par)
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      mux <- mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- -log_dmvn(m,mux,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    sig0 <- log(1)
+    kappa0<--2
     tau0<-0.1
 
 
     starttime <- Sys.time()
-    o1<-optim(par=c(kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
     endtime <- Sys.time()
     times_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_score_list_rep[[i_n]]<-o1
 
-    # starttime <- Sys.time()
-    # #o2<-optim(par=c(kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
-    # endtime <- Sys.time()
-    # times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
-    # #o_log_list_rep[[i_n]]<-o2
-    #
     starttime <- Sys.time()
-    o3<-optim(par=c(kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+    o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
+    o_log_list_rep[[i_n]]<-o2
+
+    starttime <- Sys.time()
+    o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
     endtime <- Sys.time()
     times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_log_score_list_rep[[i_n]]<-o3
@@ -242,24 +272,31 @@ plot_results <- function(res,n_res=NULL){
   print(sum(sapply(o_log_score_list_rep[1:n_res], function(o) o$convergence)))
 
   #Join results in dataframe
-  par_df <- data.frame(method=rep(c("Sroot","LL","Slog"),each=n_res), mu = c(score_par[1,],log_par[1,],log_score_par[1,]), rho = c(score_par[2,],log_par[2,],log_score_par[2,]), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res]),i=rep(c(1:n_res),3))
+  par_df <- data.frame(method=rep(c("Sroot","LL","Slog"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res]),i=rep(c(1:n_res),3))
   par_df_mean <- par_df %>%
     group_by(method) %>%
-    summarize(meanmu = mean(mu),meanrho = mean(rho))
-  p.scatter <- ggplot(par_df,aes(x=mu,y=rho,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[2],col="black",shape=8)
+    summarise_all(.funs = c(mean="mean"))
+  p.scatter <- ggplot(par_df,aes(x=par.2,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
 
-  p.hist.mu<-ggplot(par_df,aes(x=mu,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[1])+
-    geom_vline(data = par_df_mean,aes(xintercept=meanmu,color=method,linetype=method))+
+  p.hist.p1<-ggplot(par_df,aes(x=par.1,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[1])+
+    geom_vline(data = par_df_mean,aes(xintercept=par.1_mean,color=method,linetype=method))+
     scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
-  p.hist.rho<-ggplot(par_df,aes(x=rho,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[2])+
-    geom_vline(data = par_df_mean,aes(xintercept=meanrho,color=method,linetype=method))+
+  p.hist.p2<-ggplot(par_df,aes(x=par.2,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[2])+
+    geom_vline(data = par_df_mean,aes(xintercept=par.2_mean,color=method,linetype=method))+
     scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
 
   p.time <- ggplot(par_df,aes(x=i,y=run.time,color=method,shape=method))+geom_point(alpha=0.75)+ scale_color_brewer(palette = "Dark2")
   p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_histogram(alpha=0.5,position="identity")+ scale_color_brewer(palette = "Dark2")+ scale_fill_brewer(palette = "Dark2")
 
-
-  return(list(p.scatter=p.scatter,p.hist.mu=p.hist.mu,p.hist.rho=p.hist.rho,p.time=p.time,p.time.hist=p.time.hist))
+  if(nrow(score_par)>2){
+  p.hist.p3<-ggplot(par_df,aes(x=par.3,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[3])+
+    geom_vline(data = par_df_mean,aes(xintercept=par.3_mean,color=method,linetype=method))+
+    scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+  return(list(p.scatter=p.scatter,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.hist.p3=p.hist.p3,p.time=p.time,p.time.hist=p.time.hist))
+}else{
+  return(list(p.scatter=p.scatter,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.time=p.time,p.time.hist=p.time.hist))
+}
 
 }
 
