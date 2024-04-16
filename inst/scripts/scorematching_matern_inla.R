@@ -1,6 +1,7 @@
 library(INLA)
 library(grid)
 library(cowplot)
+library(latex2exp)
 
 sim_loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T)
 mesh_sim = inla.mesh.2d(loc = sim_loc, max.edge=c(0.5, 1))
@@ -10,6 +11,7 @@ mesh_sim$n
 
 spde = inla.spde2.matern(mesh_sim, alpha = 2)
 params_true=spde$param.inla$theta.initial
+params_true<-c(log(0.1),params_true)
 print(params_true)
 Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 
@@ -37,14 +39,23 @@ ggsave("GMRF_time_hist_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.time.his
 
 
 ################# normal response model
-
-res_no_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=0.00000001) #no outliers 0.0002
+n_rep<-100
+res_no_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=0.1) #no outliers 0.0002
 p.res_no_outliers_nresp <- plot_results(res_no_outliers_nresp)
 p.res_no_outliers_nresp$p.scatter
-p.res_no_outliers_nresp$p.hist.mu
-p.res_no_outliers_nresp$p.hist.rho
+p.res_no_outliers_nresp$p.hist.p1
+p.res_no_outliers_nresp$p.hist.p2
+p.res_no_outliers_nresp$p.hist.p3
 p.res_no_outliers_nresp$p.time
 p.res_no_outliers_nresp$p.time.hist
+
+
+p.par.hist <- plot_grid_3(p.res_no_outliers_nresp$p.hist.p1+xlab(TeX("$\\log(\\sigma)$")),
+            p.res_no_outliers_nresp$p.hist.p2+xlab(TeX("$\\log(\\kappa)$")),
+            p.res_no_outliers_nresp$p.hist.p3+xlab(TeX("$\\log(\\tau)$")))
+ggsave('inlaparhist_sigma01.pdf',p.par.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('inlaparscatter_sigma01.pdf',p.res_no_outliers_nresp$p.scatter+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("$\\log(\\tau)$")),dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('inlatimehist_sigma01.pdf',p.res_no_outliers_nresp$p.time.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
 
 score_par <- sapply(res_no_outliers_nresp$o_sroot[1:n_res], function(o) o$par)
 print(sum(sapply(res_no_outliers_nresp$o_sroot[1:n_res], function(o) o$convergence)))
@@ -74,7 +85,7 @@ n <- mesh_sim$n
 mu<- rep(0,n)
 I<-Diagonal(n)
 A<-Diagonal(n)
-m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
+m<-t(inla.qsample(n=100, Q = Q, mu=mu)) #observations of latent field
 m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
 #m[,1]<-4
 # if(n_outlier>0){ #add outliers
