@@ -111,15 +111,15 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       print(par)
       sig <- exp(par[1])
       theta <- par[-1]
-      mu <- rep(0,n)
+      mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
       Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
       Qeps <- I/sig^2
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
-      mux <- mu
+      muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-      score <- -log_dmvn(m,mux,Qtheta)
+      score <- -log_dmvn(m,muy,Qtheta)
       print(score)
       return(score)
     }
