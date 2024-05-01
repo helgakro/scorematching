@@ -1,7 +1,492 @@
+inference_fix_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,A=NULL){
+
+  n_x <-  n_mesh #narr_rep[i_n]
+  if(is.null(A)){
+    A<-Diagonal(n_x)
+  }
+  n_y <- nrow(A)
+  I<-Diagonal(n_y)
+  mu<- rep(0,n_x)
+
+
+  my_obj_func_3 <- function(par){
+    print(par)
+
+    theta <- par
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+
+    Qtheta <- Qx
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- loo_score_vectorised(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+  # my_log_score_obj_func <- function(par){
+  #   theta <- par
+  #   mu <- rep(0,n)
+  #   Qx <- inla.spde.precision(spde, theta=theta)
+  #   mux <- mu
+  #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+  #   print(score)
+  #   return(score)
+  # }
+
+  my_log_score_obj_func <- function(par){
+    print(par)
+
+    theta <- par
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+
+    Qtheta <- Qx
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- loo_log_score(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+  #
+  # my_log_obj_func <- function(par){
+  #   theta <- par
+  #   mu <- rep(0,n)
+  #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+  #   muxy <- mu
+  #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+  #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
+  # }
+
+
+  my_log_obj_func <- function(par){
+    print(par)
+
+    theta <- par
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+    Qtheta <- Qx
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- -log_dmvn(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+
+  kappa0<--2
+  tau0<-0.1
+
+
+  starttime <- Sys.time()
+  o1<-optim(par=c(kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
+  endtime <- Sys.time()
+  times_score_rep<-difftime(endtime,starttime, units="secs")
+  o_score_list_rep<-o1
+
+  o2<-NULL
+  times_log_rep<-NULL
+  # starttime <- Sys.time()
+  # o2<-optim(par=c(kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+  # endtime <- Sys.time()
+  # times_log_rep<-difftime(endtime,starttime, units="secs")
+  # o_log_list_rep<-o2
+  #
+  # score_ll_est <- my_obj_func_3(o2$par)
+
+  o3<-NULL
+  times_log_score_rep<-NULL
+  score_ll_est<-NULL
+  # starttime <- Sys.time()
+  # o3<-optim(par=c(kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+  # endtime <- Sys.time()
+  # times_log_score_rep<-difftime(endtime,starttime, units="secs")
+  # o_log_score_list_rep<-o3
+
+
+  return(list(o1=o1,o2=o2,o3=o3,t1=times_score_rep,t2=times_log_rep,t3=times_log_score_rep,score_ll=score_ll_est))
+}
+
+
+inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,sroot=TRUE,ll=TRUE,slog=TRUE){
+  n_x <-  n_mesh #narr_rep[i_n]
+  if(is.null(A)){
+    A<-Diagonal(n_x)
+  }
+  n_y <- nrow(A)
+  I<-Diagonal(n_y)
+  mu<- rep(0,n_x)
+
+
+  my_obj_func_3 <- function(par){
+    print(par)
+
+    sig <- exp(par[1])
+    theta <- par[-1]
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qeps <- I/sig^2
+
+    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- loo_score_vectorised(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+  # my_log_score_obj_func <- function(par){
+  #   theta <- par
+  #   mu <- rep(0,n)
+  #   Qx <- inla.spde.precision(spde, theta=theta)
+  #   mux <- mu
+  #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+  #   print(score)
+  #   return(score)
+  # }
+
+  my_log_score_obj_func <- function(par){
+    print(par)
+
+    sig <- exp(par[1])
+    theta <- par[-1]
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qeps <- I/sig^2
+
+    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- loo_log_score(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+  #
+  # my_log_obj_func <- function(par){
+  #   theta <- par
+  #   mu <- rep(0,n)
+  #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+  #   muxy <- mu
+  #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+  #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
+  # }
+
+
+  my_log_obj_func <- function(par){
+    print(par)
+    sig <- exp(par[1])
+    theta <- par[-1]
+    mu <- rep(0,n_x)
+    #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+    Qx <- inla.spde.precision(spde, theta=theta)
+    Qeps <- I/sig^2
+    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    muy <- A%*%mu
+    #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    score <- -log_dmvn(m,muy,Qtheta)
+    print(score)
+    return(score)
+  }
+
+  sig0 <- log(0.1)
+  kappa0<--2
+  tau0<-0.1
+
+  if(sroot){
+  starttime <- Sys.time()
+  o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
+  endtime <- Sys.time()
+  times_score_rep<-difftime(endtime,starttime, units="secs")
+  o_score_list_rep<-o1
+  }else{
+    o1<-NULL
+    times_score_rep<-NULL
+  }
+  if(ll){
+  starttime <- Sys.time()
+  o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+  endtime <- Sys.time()
+  times_log_rep<-difftime(endtime,starttime, units="secs")
+  o_log_list_rep<-o2
+
+  score_ll_est <- my_obj_func_3(o2$par)
+  }else{
+  o2<-NULL
+  times_log_rep<-NULL
+  score_ll_est<-NULL
+  }
+  if(slog){
+  starttime <- Sys.time()
+  o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+  endtime <- Sys.time()
+  times_log_score_rep<-difftime(endtime,starttime, units="secs")
+  o_log_score_list_rep<-o3
+  }else{
+  o3<-NULL
+  times_log_score_rep<-NULL
+  }
+
+  return(list(o1=o1,o2=o2,o3=o3,t1=times_score_rep,t2=times_log_rep,t3=times_log_score_rep,score_ll=score_ll_est))
+}
+
+inference_norm_resp_old <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
+
+    n_x <-  n_mesh #narr_rep[i_n]
+    if(is.null(A)){
+      A<-Diagonal(n_x)
+    }
+    n_y <- nrow(A)
+    I<-Diagonal(n_y)
+    mu<- rep(0,n_x)
+
+
+    my_obj_func_3 <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_score_vectorised(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    # my_log_score_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qx <- inla.spde.precision(spde, theta=theta)
+    #   mux <- mu
+    #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+    #   print(score)
+    #   return(score)
+    # }
+
+    my_log_score_obj_func <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_log_score(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    #
+    # my_log_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+    #   muxy <- mu
+    #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
+    # }
+
+
+    my_log_obj_func <- function(par){
+      print(par)
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- -log_dmvn(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    sig0 <- log(1)
+    kappa0<--2
+    tau0<-0.1
+
+
+    starttime <- Sys.time()
+    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
+    endtime <- Sys.time()
+    times_score_rep<-difftime(endtime,starttime, units="secs")
+    o_score_list_rep<-o1
+
+    starttime <- Sys.time()
+    o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_rep<-difftime(endtime,starttime, units="secs")
+    o_log_list_rep<-o2
+
+    score_ll_est <- my_obj_func_3(o2$par)
+
+    starttime <- Sys.time()
+    o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_score_rep<-difftime(endtime,starttime, units="secs")
+    o_log_score_list_rep<-o3
+
+
+
+
+  return(list(o1=o1,o2=o2,o3=o3))
+}
+
+
+inference_norm_resp_old2 <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
+
+    n_x <-  n_mesh #narr_rep[i_n]
+    if(is.null(A)){
+      A<-Diagonal(n_x)
+    }
+    n_y <- nrow(A)
+    I<-Diagonal(n_y)
+    mu<- rep(0,n_x)
+
+
+    my_obj_func_3 <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_score_vectorised(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    # my_log_score_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qx <- inla.spde.precision(spde, theta=theta)
+    #   mux <- mu
+    #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+    #   print(score)
+    #   return(score)
+    # }
+
+    my_log_score_obj_func <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_log_score(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    #
+    # my_log_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+    #   muxy <- mu
+    #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
+    # }
+
+
+    my_log_obj_func <- function(par){
+      print(par)
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- -log_dmvn(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    sig0 <- log(1)
+    kappa0<--2
+    tau0<-0.1
+
+
+    starttime <- Sys.time()
+    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+
+    endtime <- Sys.time()
+    times_score_rep<-difftime(endtime,starttime, units="secs")
+    o_score_list_rep<-o1
+
+    starttime <- Sys.time()
+    o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_rep<-difftime(endtime,starttime, units="secs")
+    o_log_list_rep<-o2
+
+    score_ll_est <- my_obj_func_3(o2$par)
+
+    starttime <- Sys.time()
+    o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+    endtime <- Sys.time()
+    times_log_score_rep<-difftime(endtime,starttime, units="secs")
+    o_log_score_list_rep<-o3
+
+
+
+
+  return(list(o1=o1,o2=o2,o3=o3))
+}
+
+
+
 repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
+  score_ll_est <- rep(0,n_rep)
   times_log_score_rep <- rep(0,n_rep)
   o_score_list_rep <- vector("list", n_rep)
   o_log_list_rep <- vector("list", n_rep)
@@ -142,6 +627,8 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_log_list_rep[[i_n]]<-o2
 
+    score_ll_est[[i_n]] <- my_obj_func_3(o2$par)
+
     starttime <- Sys.time()
     o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
     endtime <- Sys.time()
@@ -156,7 +643,8 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
               times_slog=times_log_score_rep,
               o_sroot =o_score_list_rep ,
               o_ll =o_log_list_rep ,
-              o_slog=o_log_score_list_rep))
+              o_slog=o_log_score_list_rep,
+              score_ll=score_ll_est))
 }
 
 
@@ -174,7 +662,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 #' @export
 #'
 #' @examples
-repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL){
+repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,m=NULL){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
@@ -191,10 +679,12 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL)
     print(paste("Iteration",i_n))
     n <- narr_rep[i_n]
     mu<- rep(0,n)
+    if(is.null(m)){
     m<-t(inla.qsample(n=1, Q = Q, mu=mu))
     #m[,1]<-4
     if(n_outlier>0){
       m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
+    }
     }
 
 
