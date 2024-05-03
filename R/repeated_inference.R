@@ -480,6 +480,150 @@ inference_norm_resp_old2 <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NUL
   return(list(o1=o1,o2=o2,o3=o3))
 }
 
+repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
+  narr_rep <- rep(n_mesh,n_rep)
+  times_score_rep <- rep(0,n_rep)
+  times_log_rep <- rep(0,n_rep)
+  score_ll_est <- rep(0,n_rep)
+  times_log_score_rep <- rep(0,n_rep)
+  o_score_list_rep <- vector("list", n_rep)
+  o_log_list_rep <- vector("list", n_rep)
+  o_log_score_list_rep <- vector("list", n_rep)
+  times_score_rep_2 <- rep(0,n_rep)
+  o_score_list_rep_2 <- vector("list", n_rep)
+
+
+  for(i_n in c(1:n_rep)){
+
+    print(paste("Iteration",i_n))
+
+    n_x <-  n_mesh #narr_rep[i_n]
+    if(is.null(A)){
+      A<-Diagonal(n_x)
+    }
+    n_y <- nrow(A)
+    I<-Diagonal(n_y)
+    mu<- rep(0,n_x)
+    # I<-Diagonal(n)
+    # A<-Diagonal(n)
+    # m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
+    # m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
+    n_sample <- 10
+    m<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
+    m <- A%*%m+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
+    m <- Matrix::t(m)
+    #m[,1]<-4
+    if(n_outlier>0){ #add outliers
+      m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
+    }
+
+
+    my_obj_func_3_x <- function(par){
+      print(par)
+      theta <- par
+      mu <- rep(0,n)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      mux <- mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_score_vectorised_eps(m,mux,Qx,sigma_val,A)
+      print(score)
+      return(score)
+    }
+
+    my_obj_func_3 <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_score_vectorised(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    # my_log_score_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qx <- inla.spde.precision(spde, theta=theta)
+    #   mux <- mu
+    #   score <- loo_log_score_eps(m,mux,Qx,sigma_val,A)
+    #   print(score)
+    #   return(score)
+    # }
+
+    my_log_score_obj_func <- function(par){
+      print(par)
+
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- loo_log_score(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+    #
+    # my_log_obj_func <- function(par){
+    #   theta <- par
+    #   mu <- rep(0,n)
+    #   Qxy <- inla.spde.precision(spde, theta=theta)+I*sigma_val^2
+    #   muxy <- mu
+    #   if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+    #   return(-log_dmvn_eps(m,muxy,Qxy,sigma_val))
+    # }
+
+
+    my_log_obj_func <- function(par){
+      print(par)
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
+      score <- -log_dmvn(m,muy,Qtheta)
+      print(score)
+      return(score)
+    }
+
+
+
+    o_score_list_rep[[i_n]]<-c(my_obj_func_3(res$o_sroot[[i_n]]$par),my_log_obj_func(res$o_sroot[[i_n]]$par),my_log_score_obj_func(res$o_sroot[[i_n]]$par))
+
+
+    o_log_list_rep[[i_n]]<-c(my_obj_func_3(res$o_ll[[i_n]]$par),my_log_obj_func(res$o_ll[[i_n]]$par),my_log_score_obj_func(res$o_ll[[i_n]]$par))
+
+
+    o_log_score_list_rep[[i_n]]<-c(my_obj_func_3(res$o_slog[[i_n]]$par),my_log_obj_func(res$o_slog[[i_n]]$par),my_log_score_obj_func(res$o_slog[[i_n]]$par))
+
+
+  }
+
+  return(list(o_sroot =o_score_list_rep ,
+              o_ll =o_log_list_rep ,
+              o_slog=o_log_score_list_rep))
+}
 
 
 repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
@@ -881,3 +1025,18 @@ plot_grid_4 <- function(p1,p2,p3,p4){
   return(plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .05)))
 }
 
+plot_grid_2_nolegend <- function(p1,p2){
+  prow <- plot_grid(
+    p1 + theme(legend.position="none"),
+    p2 + theme(legend.position="none"),
+    align = 'vh',
+    labels = c("A", "B"),
+    hjust = -1,
+    nrow = 1
+  )
+
+
+  # add the legend underneath the row we made earlier. Give it 10%
+  # of the height of one plot (via rel_heights).
+  return(plot_grid(prow, ncol = 1, rel_heights = c(1, .1)))
+}

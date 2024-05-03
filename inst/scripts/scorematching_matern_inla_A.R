@@ -2,6 +2,8 @@ library(INLA)
 library(grid)
 library(cowplot)
 
+set.seed(111101)
+
 sim_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
 mesh_sim = inla.mesh.2d(loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T), max.edge=c(0.5, 1))
 plot(mesh_sim)
@@ -10,15 +12,24 @@ mesh_sim$n
 A <- inla.spde.make.A(mesh=mesh_sim,loc=sim_loc)
 
 spde = inla.spde2.matern(mesh_sim, alpha = 2)
-sigma_val <- 0.001
+sigma_val <- 0.1
 params_true=spde$param.inla$theta.initial
 params_true<-c(log(sigma_val),params_true)
 print(params_true)
 Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 
 
+library(ggplot2)
+library(inlabru)
+Amap.df <- data.frame(lon=sim_loc[,1],lat=sim_loc[,2])
+p.A.map<-ggplot(Amap.df)+gg(mesh_sim,edge.color = "gray",
+                                    int.color = "black",
+                                    ext.color = "black")+geom_point(aes(x=lon,y=lat),size=2)+scale_color_viridis_c()+xlab("longitude")+ylab("latitude")
+p.A.map
+ggsave('maternA_map_all.pdf',p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
+
 ########### rep optim ##############
-n_rep<-100
+n_rep<-500#100
 res_no_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A) #no outliers 0.0002
 p.res_no_outliers_nresp <- plot_results(res_no_outliers_nresp)
 p.res_no_outliers_nresp$p.scatter
@@ -29,6 +40,33 @@ p.res_no_outliers_nresp$p.time
 p.res_no_outliers_nresp$p.time.hist
 
 
+p.par.hist <- plot_grid_3(p.res_no_outliers_nresp$p.hist.p1+xlab(TeX("$\\log(\\sigma)$")),
+                          p.res_no_outliers_nresp$p.hist.p2+xlab(TeX("$\\log(\\kappa)$")),
+                          p.res_no_outliers_nresp$p.hist.p3+xlab(TeX("$\\log(\\tau)$")))
+ggsave('Ainlaparhist_sigma01.pdf',p.par.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('Ainlaparscatter_sigma01.pdf',p.res_no_outliers_nresp$p.scatter+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("$\\log(\\tau)$")),dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('Ainlatimehist_sigma01.pdf',p.res_no_outliers_nresp$p.time.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
+################ score of repeated other
+
+scores_no_outliers_nresp <- repeated_score_norm_resp(res_no_outliers_nresp,spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A) #no outliers 0.0002
+
+
+score_res_nresp_df <- data.frame(val=c(sapply(scores_no_outliers_nresp$o_sroot,function(x) x[1]),sapply(scores_no_outliers_nresp$o_ll,function(x) x[1])),type=rep(c("sroot","ll"),each=n_rep))
+p.score.hist1<-ggplot(score_res_nresp_df,aes(x=val,color=type,fill=type))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+
+score_res_nresp_df_2 <- data.frame(val.sroot=sapply(scores_no_outliers_nresp$o_sroot,function(x) x[1]),val.ll=sapply(scores_no_outliers_nresp$o_ll,function(x) x[1]))
+p.score.hist2<-ggplot(score_res_nresp_df_2,aes(x=val.ll-val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
+hist(sapply(res_no_outliers_nresp$o_sroot, function(o) o$value))
+hist(sapply(scores_no_outliers_nresp$o_sroot,function(x) x[1]))
+
+hist(sapply(res_no_outliers_nresp$o_ll, function(o) o$value))
+hist(sapply(scores_no_outliers_nresp$o_ll,function(x) x[1]))
+
+hist(sapply(scores_no_outliers_nresp$o_sroot,function(x) x[1])-sapply(scores_no_outliers_nresp$o_ll,function(x) x[1]))
+
 ################ score of LL est #####################
 
 
@@ -36,12 +74,24 @@ p.res_no_outliers_nresp$p.time.hist
 score_sroot <- sapply(res_no_outliers_nresp$o_sroot[1:n_rep], function(o) o$value)
 score_ll <- res_no_outliers_nresp$score_ll
 
+score_res_nresp_df_3 <- data.frame(val.sroot=score_sroot,val.ll=score_ll)
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=val.ll-val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
 plot(score_sroot,score_ll)
 abline(a=0,b=1)
 
 
 plot(score_ll-score_sroot)
-abline(a=1,b=0)
+abline(a=0,b=0)
+
+
+hist(score_ll-score_sroot)
+
+
+p.score.hist <- plot_grid_2_nolegend(p.score.hist3,p.score.hist2)
+p.score.hist
+ggsave('Ainlascorehist_sigma01.pdf',p.score.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
 #####################################
 
 score_par <- sapply(res_no_outliers_nresp$o_sroot[1:n_res], function(o) o$par)
