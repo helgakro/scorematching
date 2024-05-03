@@ -626,7 +626,7 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 }
 
 
-repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
+repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,Atest=NULL){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
@@ -638,6 +638,8 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
   times_score_rep_2 <- rep(0,n_rep)
   o_score_list_rep_2 <- vector("list", n_rep)
 
+  pred_score_o_sroot <- rep(0,n_rep)
+  pred_score_o_ll <- rep(0,n_rep)
 
   for(i_n in c(1:n_rep)){
 
@@ -655,9 +657,11 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     # m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
     # m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
     n_sample <- 10
-    m<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
-    m <- A%*%m+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
+    mfield<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
+    m <- A%*%mfield+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
     m <- Matrix::t(m)
+
+
     #m[,1]<-4
     if(n_outlier>0){ #add outliers
       m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
@@ -677,7 +681,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       return(score)
     }
 
-    my_obj_func_3 <- function(par){
+    my_obj_func_3 <- function(par,A,m){
       print(par)
 
       sig <- exp(par[1])
@@ -706,7 +710,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     #   return(score)
     # }
 
-    my_log_score_obj_func <- function(par){
+    my_log_score_obj_func <- function(par,A,m){
       print(par)
 
       sig <- exp(par[1])
@@ -736,7 +740,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     # }
 
 
-    my_log_obj_func <- function(par){
+    my_log_obj_func <- function(par,A,m){
       print(par)
       sig <- exp(par[1])
       theta <- par[-1]
@@ -759,26 +763,34 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
 
     starttime <- Sys.time()
-    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,control=list(maxit=50000))
+    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,control=list(maxit=50000))
 
     endtime <- Sys.time()
     times_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_score_list_rep[[i_n]]<-o1
 
     starttime <- Sys.time()
-    o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,control=list(maxit=50000))
+    o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,A=A,m=m,control=list(maxit=50000))
     endtime <- Sys.time()
     times_log_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_log_list_rep[[i_n]]<-o2
 
-    score_ll_est[[i_n]] <- my_obj_func_3(o2$par)
+    score_ll_est[[i_n]] <- my_obj_func_3(o2$par,A=A,m=m)
 
     starttime <- Sys.time()
-    o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,control=list(maxit=50000))
+    o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,A=A,m=m,control=list(maxit=50000))
     endtime <- Sys.time()
     times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_log_score_list_rep[[i_n]]<-o3
 
+    if(!is.null(Atest)){
+      n_test <- nrow(Atest)
+      mtest <- Atest%*%mfield+rnorm(n=n_test*n_sample,mean = 0,sd = sigma_val) #added noise
+      mtest <- Matrix::t(mtest)
+
+      pred_score_o_sroot[[i_n]] <- my_obj_func_3(o1$par,A=Atest,m=mtest)
+      pred_score_o_ll[[i_n]] <- my_obj_func_3(o2$par,A=Atest,m=mtest)
+    }
 
   }
 
@@ -788,7 +800,9 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
               o_sroot =o_score_list_rep ,
               o_ll =o_log_list_rep ,
               o_slog=o_log_score_list_rep,
-              score_ll=score_ll_est))
+              score_ll=score_ll_est,
+              pred_sroot=pred_score_o_sroot,
+              pred_ll=pred_score_o_ll))
 }
 
 

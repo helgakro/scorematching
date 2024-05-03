@@ -5,11 +5,13 @@ library(cowplot)
 set.seed(111101)
 
 sim_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
+test_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
 mesh_sim = inla.mesh.2d(loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T), max.edge=c(0.5, 1))
 plot(mesh_sim)
 points(sim_loc,col='red',pch=19)
 mesh_sim$n
 A <- inla.spde.make.A(mesh=mesh_sim,loc=sim_loc)
+Atest <- inla.spde.make.A(mesh=mesh_sim,loc=test_loc)
 
 spde = inla.spde2.matern(mesh_sim, alpha = 2)
 sigma_val <- 0.1
@@ -21,10 +23,10 @@ Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 
 library(ggplot2)
 library(inlabru)
-Amap.df <- data.frame(lon=sim_loc[,1],lat=sim_loc[,2])
+Amap.df <- data.frame(lon=c(sim_loc[,1],test_loc[,1]),lat=c(sim_loc[,2],test_loc[,2]),type=rep(c("Train","Test"),each=50))
 p.A.map<-ggplot(Amap.df)+gg(mesh_sim,edge.color = "gray",
                                     int.color = "black",
-                                    ext.color = "black")+geom_point(aes(x=lon,y=lat),size=2)+scale_color_viridis_c()+xlab("longitude")+ylab("latitude")
+                                    ext.color = "black")+geom_point(aes(x=lon,y=lat,shape=type),size=2)+scale_color_viridis_d()+xlab("longitude")+ylab("latitude")
 p.A.map
 ggsave('maternA_map_all.pdf',p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
 
@@ -184,3 +186,11 @@ o1$value
 o1$par
 spde$param.inla$theta.initial
 my_obj_func_new(spde$param.inla$theta.initial)
+
+
+
+##################### TEST set ############################
+
+res_traintest_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,100,Q,sigma_val=sigma_val,A=A,Atest=Atest)
+
+hist((res_traintest_nresp$pred_ll-res_traintest_nresp$pred_sroot)/res_traintest_nresp$pred_sroot)
