@@ -58,7 +58,7 @@ p.score.hist1<-ggplot(score_res_nresp_df,aes(x=val,color=type,fill=type))+geom_h
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
 
 score_res_nresp_df_2 <- data.frame(val.sroot=sapply(scores_no_outliers_nresp$o_sroot,function(x) x[1]),val.ll=sapply(scores_no_outliers_nresp$o_ll,function(x) x[1]))
-p.score.hist2<-ggplot(score_res_nresp_df_2,aes(x=val.ll-val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+p.score.hist2<-ggplot(score_res_nresp_df_2,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
 
 hist(sapply(res_no_outliers_nresp$o_sroot, function(o) o$value))
@@ -77,7 +77,7 @@ score_sroot <- sapply(res_no_outliers_nresp$o_sroot[1:n_rep], function(o) o$valu
 score_ll <- res_no_outliers_nresp$score_ll
 
 score_res_nresp_df_3 <- data.frame(val.sroot=score_sroot,val.ll=score_ll)
-p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=val.ll-val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
 
 plot(score_sroot,score_ll)
@@ -193,4 +193,12 @@ my_obj_func_new(spde$param.inla$theta.initial)
 
 res_traintest_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,100,Q,sigma_val=sigma_val,A=A,Atest=Atest)
 
-hist((res_traintest_nresp$pred_ll-res_traintest_nresp$pred_sroot)/res_traintest_nresp$pred_sroot)
+
+score_res_nresp_df_4 <- data.frame(val.sroot=res_traintest_nresp$pred_sroot,val.ll=res_traintest_nresp$pred_ll)
+p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
+
+p.score.hist.multi<-plot_grid_3_nolegend(p.score.hist3+xlim(c(-0.015,0.015)),p.score.hist4+xlim(c(-0.015,0.015)),p.score.hist2+xlim(c(-0.015,0.015)))
+p.score.hist.multi
+ggsave('Ainlascorehist_sigma01_traintest.pdf',p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
