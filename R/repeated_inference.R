@@ -626,7 +626,7 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 }
 
 
-repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,Atest=NULL){
+repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,Atest=NULL,tnu=NULL,scoretype="sroot"){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
@@ -658,7 +658,14 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     # m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
     n_sample <- 10
     mfield<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
-    m <- A%*%mfield+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
+    if(is.null(tnu)){
+      m <- A%*%mfield+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
+    }else if(tnu>0){
+      m <- A%*%mfield+sigma_val*rt(n=n_y*n_sample,df=tnu)
+    }else{
+      m <- A%*%mfield
+    }
+
     m <- Matrix::t(m)
 
 
@@ -695,7 +702,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-      score <- loo_score_vectorised(m,muy,Qtheta)
+      score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
       print(score)
       return(score)
     }

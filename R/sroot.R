@@ -52,6 +52,23 @@ sroot_normal <- function(y,mu,sigma){
   return(score)
 }
 
+#crps for normal distribution
+crps_normal <- function(y,mu,sigma){
+  ep <- 2*sigma*dnorm((mu-y)/sigma)+(mu-y)*(2*pnorm((mu-y)/sigma)-1)
+  epp <- 2*sigma/sqrt(pi)
+  score <- ep-epp/2
+  return(score)
+}
+
+
+#crps for normal distribution
+scrps_normal <- function(y,mu,sigma){
+  ep <- 2*sigma*dnorm((mu-y)/sigma)+(mu-y)*(2*pnorm((mu-y)/sigma)-1)
+  epp <- 2*sigma/sqrt(pi)
+  score <- ep/epp+log(epp)/2
+  return(score)
+}
+
 #sroot for truncated normal distribution
 sroot_tnorm <- function(y,mu,sigma,l,u){
   y<-(y-mu)/sigma
