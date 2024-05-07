@@ -1,6 +1,7 @@
 library(INLA)
 library(grid)
 library(cowplot)
+library(latex2exp)
 
 set.seed(111101)
 
@@ -202,3 +203,52 @@ p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,co
 p.score.hist.multi<-plot_grid_3_nolegend(p.score.hist3+xlim(c(-0.015,0.015)),p.score.hist4+xlim(c(-0.015,0.015)),p.score.hist2+xlim(c(-0.015,0.015)))
 p.score.hist.multi
 ggsave('Ainlascorehist_sigma01_traintest.pdf',p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+####################### t-response ############################
+
+n_rep<-10#100
+res_no_outliers_tresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A,tnu=2) #no outliers 0.0002
+p.res_no_outliers_tresp <- plot_results(res_no_outliers_tresp)
+p.res_no_outliers_tresp$p.scatter
+p.res_no_outliers_tresp$p.hist.p1
+p.res_no_outliers_tresp$p.hist.p2
+p.res_no_outliers_tresp$p.hist.p3
+p.res_no_outliers_tresp$p.time
+p.res_no_outliers_tresp$p.time.hist
+
+
+p.par.hist.t <- plot_grid_3(p.res_no_outliers_tresp$p.hist.p1+xlab(TeX("$\\log(\\sigma)$")),
+                          p.res_no_outliers_tresp$p.hist.p2+xlab(TeX("$\\log(\\kappa)$")),
+                          p.res_no_outliers_tresp$p.hist.p3+xlab(TeX("$\\log(\\tau)$")))
+ggsave('Ainlaparhist_t_500_nu2.pdf',p.par.hist.t,dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('Ainlaparscatter_t_500_nu2.pdf',p.res_no_outliers_tresp$p.scatter+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("$\\log(\\tau)$")),dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave('Ainlatimehist_t_500_nu2.pdf',p.res_no_outliers_tresp$p.time.hist,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+tscore_sroot <- sapply(res_no_outliers_tresp$o_sroot[1:n_rep], function(o) o$value)
+tscore_ll <- res_no_outliers_tresp$score_ll
+
+score_res_tresp_df_3 <- data.frame(val.sroot=tscore_sroot,val.ll=tscore_ll)
+p.t.score.hist3<-ggplot(score_res_tresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity",binwidth = 0.005)+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+p.t.score.hist3
+ggsave('Ainlascorehist_t_500_nu2_binw.pdf',p.t.score.hist3,dpi = 1200,width = 18,height = 8,units = 'cm')
+############# full response
+res_no_outliers_fresp <- repeated_inference_norm_resp(spde,mesh_sim$n,100,Q,sigma_val=sigma_val,A=A,tnu=0) #no outliers 0.0002
+p.res_no_outliers_fresp <- plot_results(res_no_outliers_fresp)
+p.res_no_outliers_fresp$p.scatter
+p.res_no_outliers_fresp$p.hist.p1
+p.res_no_outliers_fresp$p.hist.p2
+p.res_no_outliers_fresp$p.hist.p3
+p.res_no_outliers_fresp$p.time
+p.res_no_outliers_fresp$p.time.hist
+
+fscore_sroot <- sapply(res_no_outliers_fresp$o_sroot[1:100], function(o) o$value)
+fscore_ll <- res_no_outliers_fresp$score_ll
+
+score_res_fresp_df_3 <- data.frame(val.sroot=fscore_sroot,val.ll=fscore_ll)
+p.f.score.hist3<-ggplot(score_res_fresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+p.f.score.hist3
