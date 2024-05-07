@@ -116,7 +116,7 @@ inference_fix_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,A=NU
 }
 
 
-inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,sroot=TRUE,ll=TRUE,slog=TRUE){
+inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,sroot=TRUE,ll=TRUE,slog=TRUE,crps=FALSE,scrps=FALSE){
   n_x <-  n_mesh #narr_rep[i_n]
   if(is.null(A)){
     A<-Diagonal(n_x)
@@ -126,7 +126,7 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
   mu<- rep(0,n_x)
 
 
-  my_obj_func_3 <- function(par){
+  my_obj_func_3 <- function(par,scoretype="sroot"){
     print(par)
 
     sig <- exp(par[1])
@@ -139,7 +139,7 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
     Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
     muy <- A%*%mu
     #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
-    score <- loo_score_vectorised(m,muy,Qtheta)
+    score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
     print(score)
     return(score)
   }
@@ -238,7 +238,31 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
   times_log_score_rep<-NULL
   }
 
-  return(list(o1=o1,o2=o2,o3=o3,t1=times_score_rep,t2=times_log_rep,t3=times_log_score_rep,score_ll=score_ll_est))
+  if(crps){
+    starttime <- Sys.time()
+    o4<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,scoretype="crps",control=list(maxit=50000))
+
+    endtime <- Sys.time()
+    times_score_rep_crps<-difftime(endtime,starttime, units="secs")
+    o_score_rep_crps<-o4
+  }else{
+    o4<-NULL
+    times_score_rep_crps<-NULL
+  }
+
+  if(scrps){
+    starttime <- Sys.time()
+    o5<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,scoretype="scrps",control=list(maxit=50000))
+
+    endtime <- Sys.time()
+    times_score_rep_scrps<-difftime(endtime,starttime, units="secs")
+    o_score_rep_scrps<-o5
+  }else{
+    o5<-NULL
+    times_score_rep_scrps<-NULL
+  }
+
+  return(list(o1=o1,o2=o2,o3=o3,o4=o4,o5=o5,t1=times_score_rep,t2=times_log_rep,t3=times_log_score_rep,score_ll=score_ll_est,t4=times_score_rep_crps,t5=times_score_rep_scrps))
 }
 
 inference_norm_resp_old <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL){
@@ -626,15 +650,19 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 }
 
 
-repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,Atest=NULL,tnu=NULL,scoretype="sroot"){
+repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,sigma_val=1,A=NULL,Atest=NULL,tnu=NULL,scoretypes=c("sroot","ll","slog")){
   narr_rep <- rep(n_mesh,n_rep)
   times_score_rep <- rep(0,n_rep)
   times_log_rep <- rep(0,n_rep)
   score_ll_est <- rep(0,n_rep)
+  times_score_rep_crps <- rep(0,n_rep)
+  times_score_rep_scrps <- rep(0,n_rep)
   times_log_score_rep <- rep(0,n_rep)
   o_score_list_rep <- vector("list", n_rep)
   o_log_list_rep <- vector("list", n_rep)
   o_log_score_list_rep <- vector("list", n_rep)
+  o_score_list_rep_crps <- vector("list", n_rep)
+  o_score_list_rep_scrps <- vector("list", n_rep)
   times_score_rep_2 <- rep(0,n_rep)
   o_score_list_rep_2 <- vector("list", n_rep)
 
@@ -688,7 +716,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       return(score)
     }
 
-    my_obj_func_3 <- function(par,A,m){
+    my_obj_func_3 <- function(par,A,m,scoretype="sroot"){
       print(par)
 
       sig <- exp(par[1])
@@ -768,14 +796,19 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     kappa0<--2
     tau0<-0.1
 
-
+    if("sroot"%in%scoretypes){
     starttime <- Sys.time()
-    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,control=list(maxit=50000))
+    o1<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,scoretype="sroot",control=list(maxit=50000))
 
     endtime <- Sys.time()
     times_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_score_list_rep[[i_n]]<-o1
+    }else{
+      times_score_rep[i_n]<-NULL
+      o_score_list_rep[[i_n]]<-NULL
+    }
 
+    if("ll"%in%scoretypes){
     starttime <- Sys.time()
     o2<-optim(par=c(sig0,kappa0,tau0),my_log_obj_func,A=A,m=m,control=list(maxit=50000))
     endtime <- Sys.time()
@@ -783,12 +816,23 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     o_log_list_rep[[i_n]]<-o2
 
     score_ll_est[[i_n]] <- my_obj_func_3(o2$par,A=A,m=m)
+    }else{
+      o_log_list_rep[[i_n]]<-NULL
 
-    starttime <- Sys.time()
+      score_ll_est[[i_n]] <- NULL
+    }
+
+    if("slog"%in%scoretypes){
+      starttime <- Sys.time()
     o3<-optim(par=c(sig0,kappa0,tau0),my_log_score_obj_func,A=A,m=m,control=list(maxit=50000))
     endtime <- Sys.time()
     times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
     o_log_score_list_rep[[i_n]]<-o3
+    }else{
+      times_log_score_rep[i_n]<- -1
+      o_log_score_list_rep[[i_n]]<- -1
+    }
+
 
     if(!is.null(Atest)){
       n_test <- nrow(Atest)
@@ -799,14 +843,42 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       pred_score_o_ll[[i_n]] <- my_obj_func_3(o2$par,A=Atest,m=mtest)
     }
 
+    if("crps"%in%scoretypes){
+      starttime <- Sys.time()
+      o4<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,scoretype="crps",control=list(maxit=50000))
+
+      endtime <- Sys.time()
+      times_score_rep_crps[i_n]<-difftime(endtime,starttime, units="secs")
+      o_score_list_rep_crps[[i_n]]<-o4
+    }else{
+      times_score_rep_crps[i_n]<-NULL
+      o_score_list_rep_crps[[i_n]]<-NULL
+    }
+
+    if("scrps"%in%scoretypes){
+      starttime <- Sys.time()
+      o5<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,scoretype="scrps",control=list(maxit=50000))
+
+      endtime <- Sys.time()
+      times_score_rep_scrps[i_n]<-difftime(endtime,starttime, units="secs")
+      o_score_list_rep_scrps[[i_n]]<-o4
+    }else{
+      times_score_rep_scrps[i_n]<-NULL
+      o_score_list_rep_scrps[[i_n]]<-NULL
+    }
+
   }
 
   return(list(times_sroot=times_score_rep,
               times_ll =times_log_rep ,
               times_slog=times_log_score_rep,
+              times_crps=times_score_rep_crps,
+              times_scrps=times_score_rep_scrps,
               o_sroot =o_score_list_rep ,
               o_ll =o_log_list_rep ,
               o_slog=o_log_score_list_rep,
+              o_crps =o_score_list_rep_crps ,
+              o_scrps =o_score_list_rep_scrps ,
               score_ll=score_ll_est,
               pred_sroot=pred_score_o_sroot,
               pred_ll=pred_score_o_ll))

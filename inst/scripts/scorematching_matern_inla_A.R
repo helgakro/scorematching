@@ -209,7 +209,7 @@ ggsave('Ainlascorehist_sigma01_traintest.pdf',p.score.hist.multi,dpi = 1200,widt
 ####################### t-response ############################
 
 n_rep<-10#100
-res_no_outliers_tresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A,tnu=2) #no outliers 0.0002
+res_no_outliers_tresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A,tnu=2,scoretypes=c("sroot","ll","crps","scrps")) #no outliers 0.0002
 p.res_no_outliers_tresp <- plot_results(res_no_outliers_tresp)
 p.res_no_outliers_tresp$p.scatter
 p.res_no_outliers_tresp$p.hist.p1

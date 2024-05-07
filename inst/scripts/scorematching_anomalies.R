@@ -5,7 +5,7 @@ library(INLA)
 load("inst/data/taperexample/anom1962.RData")
 
 #idxneusa <- (loc[,1]>(-120)&loc[,1]<(-100)&loc[,2]>35)#(loc[,1]>-80 & loc[,2]>40) #choose norhteast usa
-idxneusa <- sample(c(1:length(z)),2000)#randomly chosen subset
+idxneusa <- sample(c(1:length(z)),100)#randomly chosen subset
 loc<-loc[idxneusa,]
 z<-z[idxneusa]
 z<-z-mean(z)#normalise for neusa
@@ -105,7 +105,7 @@ res_no_outliers_nresp_old$o3
 # $message
 # NULL
 
-res_no_outliers_nresp <- inference_norm_resp(z,spde,mesh_sim$n,Q,A=A,ll=FALSE,slog=FALSE) #no outliers 0.0002,
+res_no_outliers_nresp <- inference_norm_resp(z,spde,mesh_sim$n,Q,A=A,ll=FALSE,slog=FALSE,sroot=TRUE,crps=TRUE,scrps=TRUE) #no outliers 0.0002,
 
 
 idxoutlier <- z<3
