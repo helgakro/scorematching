@@ -861,7 +861,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
 
       endtime <- Sys.time()
       times_score_rep_scrps[i_n]<-difftime(endtime,starttime, units="secs")
-      o_score_list_rep_scrps[[i_n]]<-o4
+      o_score_list_rep_scrps[[i_n]]<-o5
     }else{
       times_score_rep_scrps[i_n]<-NULL
       o_score_list_rep_scrps[[i_n]]<-NULL
@@ -984,7 +984,7 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,
 #' @import dplyr
 #'
 #' @export
-plot_results <- function(res,n_res=NULL){
+plot_results <- function(res,n_res=NULL,extended=TRUE){
 
   times_score_rep <- res$times_sroot
   times_log_rep <- res$times_ll
@@ -1006,8 +1006,18 @@ plot_results <- function(res,n_res=NULL){
   print(sum(sapply(o_log_list_rep[1:n_res], function(o) o$convergence)))
   print(sum(sapply(o_log_score_list_rep[1:n_res], function(o) o$convergence)))
 
+  if(extended){
+  score_par_crps <- sapply(res$o_crps[1:n_res], function(o) o$par)
+  score_par_scrps <- sapply(res$o_scrps[1:n_res], function(o) o$par)
+  print(sum(sapply(res$o_crps[1:n_res], function(o) o$convergence)))
+  print(sum(sapply(res$o_scrps[1:n_res], function(o) o$convergence)))
+  #Join results in dataframe
+  par_df <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par,score_par_crps,score_par_scrps)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res],res$times_crps[1:n_res],res$times_scrps[1:n_res]),i=rep(c(1:n_res),5))
+  }else{
+
   #Join results in dataframe
   par_df <- data.frame(method=rep(c("Sroot","LL","Slog"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res]),i=rep(c(1:n_res),3))
+  }
   par_df_mean <- par_df %>%
     group_by(method) %>%
     summarise_all(.funs = c(mean="mean"))
