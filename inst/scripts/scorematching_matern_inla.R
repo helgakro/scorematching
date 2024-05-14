@@ -3,6 +3,7 @@ library(grid)
 library(cowplot)
 library(latex2exp)
 
+set.seed(20240509)
 sim_loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T)
 mesh_sim = inla.mesh.2d(loc = sim_loc, max.edge=c(0.5, 1))
 plot(mesh_sim)
@@ -11,7 +12,7 @@ mesh_sim$n
 
 spde = inla.spde2.matern(mesh_sim, alpha = 2)
 params_true=spde$param.inla$theta.initial
-params_true<-c(log(0.1),params_true)
+#params_true<-c(log(0.1),params_true)
 print(params_true)
 Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 
@@ -19,14 +20,14 @@ Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
 # n_mesh= mesh_sim$n
 n_rep=100
 res_no_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q) #no outliers
-res_50_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,50,4) #5 outliers (50%)
-res_100_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,100,4) #10 outliers (100%)
+res_50_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,5,4) #5 outliers (50%)
+res_100_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,10,4) #10 outliers (100%)
 res_25_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,25,4) #5 outliers (25%)
-res_25_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,75,4) #5 outliers (75%)
+res_75_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,75,4) #5 outliers (75%)
 
-p.res_no_outliers <- plot_results(res_no_outliers)
-p.res_5_outliers <- plot_results(res_5_outliers)
-p.res_10_outliers <- plot_results(res_10_outliers)
+p.res_no_outliers <- plot_results(res_no_outliers,extended = TRUE)
+p.res_50_outliers <- plot_results(res_50_outliers)
+p.res_100_outliers <- plot_results(res_100_outliers)
 
 
 ########################### Save results #######################

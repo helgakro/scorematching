@@ -252,3 +252,23 @@ score_res_fresp_df_3 <- data.frame(val.sroot=fscore_sroot,val.ll=fscore_ll)
 p.f.score.hist3<-ggplot(score_res_fresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
 p.f.score.hist3
+
+
+
+
+
+########### rep optim outlier ##############
+n_rep<-100#100
+res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 4,sigma_val=0.5,A=A,scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+params_true=spde$param.inla$theta.initial
+params_true<-c(log(0.5),params_true)
+p.res_10_outliers_nresp <- plot_results(res_10_outliers_nresp)
+p.res_10_outliers_nresp$p.scatter
+p.res_10_outliers_nresp$p.hist.p1
+p.res_10_outliers_nresp$p.hist.p2
+p.res_10_outliers_nresp$p.hist.p3
+p.res_10_outliers_nresp$p.time
+p.res_10_outliers_nresp$p.time.hist
+
+hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))) #observations of latent field
+hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))+rnorm(n=nrow(A)*100,mean = 0,sd = sigma_val)) #added noise
