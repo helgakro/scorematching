@@ -1041,7 +1041,7 @@ plot_results <- function(res,n_res=NULL,extended=TRUE){
   par_df_mean <- par_df %>%
     group_by(method) %>%
     summarise_all(.funs = c(mean="mean"))
-  p.scatter.1 <- ggplot(par_df,aes(x=par.1,y=par.2,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
+  p.scatter.1 <- ggplot(par_df,aes(x=par.1,y=par.2,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[2],col="black",shape=8)
 
   p.hist.p1<-ggplot(par_df,aes(x=par.1,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[1])+
     geom_vline(data = par_df_mean,aes(xintercept=par.1_mean,color=method,linetype=method))+
@@ -1066,10 +1066,10 @@ plot_results <- function(res,n_res=NULL,extended=TRUE){
   p.box.p3 <- ggplot(par_df,aes(x=method, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[3])+
     scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
   p.scatter.2 <- ggplot(par_df,aes(x=par.2,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
-  p.scatter.3 <- ggplot(par_df,aes(x=par.1,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
-  return(list(p.scatter=p.scatter.1,p.scatter2=p.scatter.2,p.scatter3=p.scatter.3,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.hist.p3=p.hist.p3,p.time=p.time,p.time.hist=p.time.hist,p.box.p1=p.box.p1,p.box.p2=p.box.p2,p.box.p3=p.box.p3))
+  p.scatter.3 <- ggplot(par_df,aes(x=par.1,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[3],col="black",shape=8)
+  return(list(p.scatter=p.scatter.1,p.scatter2=p.scatter.2,p.scatter3=p.scatter.3,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.hist.p3=p.hist.p3,p.time=p.time,p.time.hist=p.time.hist,p.box.p1=p.box.p1,p.box.p2=p.box.p2,p.box.p3=p.box.p3,df=par_df))
 }else{
-  return(list(p.scatter=p.scatter.1,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.time=p.time,p.time.hist=p.time.hist,p.box.p1=p.box.p1,p.box.p2=p.box.p2))
+  return(list(p.scatter=p.scatter.1,p.hist.p1=p.hist.p1,p.hist.p2=p.hist.p2,p.time=p.time,p.time.hist=p.time.hist,p.box.p1=p.box.p1,p.box.p2=p.box.p2,df=par_df))
 }
 
 }
