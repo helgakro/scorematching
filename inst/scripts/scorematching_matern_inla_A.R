@@ -258,12 +258,16 @@ p.f.score.hist3
 
 
 ########### rep optim outlier ##############
+
+set.seed(20240514)
 n_rep<-100#100
-res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 4,sigma_val=0.5,A=A,scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
 params_true=spde$param.inla$theta.initial
 params_true<-c(log(0.5),params_true)
 p.res_10_outliers_nresp <- plot_results(res_10_outliers_nresp)
 p.res_10_outliers_nresp$p.scatter
+p.res_10_outliers_nresp$p.scatter2
+p.res_10_outliers_nresp$p.scatter3
 p.res_10_outliers_nresp$p.hist.p1
 p.res_10_outliers_nresp$p.hist.p2
 p.res_10_outliers_nresp$p.hist.p3
@@ -272,3 +276,214 @@ p.res_10_outliers_nresp$p.time.hist
 
 hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))) #observations of latent field
 hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))+rnorm(n=nrow(A)*100,mean = 0,sd = sigma_val)) #added noise
+
+
+p.res_10_outliers_nresp$p.box.p1
+p.res_10_outliers_nresp$p.box.p2
+p.res_10_outliers_nresp$p.box.p3
+p.par.box_10_outliers <- plot_grid_3(p.res_10_outliers_nresp$p.box.p1+ylab(TeX("$\\log(\\sigma)$")),
+                          p.res_10_outliers_nresp$p.box.p2+ylab(TeX("$\\log(\\kappa)$")),
+                          p.res_10_outliers_nresp$p.box.p3+ylab(TeX("$\\log(\\tau)$")))
+ggsave('Ainlaparbox_sigma05_10outliers.pdf',p.par.box_10_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+data.frame(val.sroot=res_10_outliers_nresp$pred_sroot,val.ll=res_10_outliers_nresp$pred_ll,outlier="yes")%>%ggplot(aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+
+#----------------
+set.seed(20240514)
+n_rep<-100#100
+res_0_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+params_true=spde$param.inla$theta.initial
+params_true<-c(log(0.5),params_true)
+p.res_0_outliers_nresp <- plot_results(res_0_outliers_nresp)
+p.res_0_outliers_nresp$p.scatter
+p.res_0_outliers_nresp$p.scatter2
+p.res_0_outliers_nresp$p.scatter3
+p.res_0_outliers_nresp$p.hist.p1
+p.res_0_outliers_nresp$p.hist.p2
+p.res_0_outliers_nresp$p.hist.p3
+p.res_0_outliers_nresp$p.time
+p.res_0_outliers_nresp$p.time.hist
+
+p.res_0_outliers_nresp$p.box.p1
+p.res_0_outliers_nresp$p.box.p2
+p.res_0_outliers_nresp$p.box.p3
+
+hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))) #observations of latent field
+hist(as.vector(A%*%inla.qsample(n=100, Q = Q, mu=rep(0,nrow(Q))))+rnorm(n=nrow(A)*100,mean = 0,sd = sigma_val)) #added noise
+p.par.box_0_outliers <- plot_grid_3(p.res_0_outliers_nresp$p.box.p1+ylab(TeX("$\\log(\\sigma)$")),
+                                     p.res_0_outliers_nresp$p.box.p2+ylab(TeX("$\\log(\\kappa)$")),
+                                     p.res_0_outliers_nresp$p.box.p3+ylab(TeX("$\\log(\\tau)$")))
+ggsave('Ainlaparbox_sigma05_0outliers.pdf',p.par.box_0_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+
+#---- plot boxplots -------------
+
+df0<-p.res_0_outliers_nresp_xy$df
+df10<-p.res_10_outliers_nresp_xy$df
+
+df0$outlier <- "no"
+df10$outlier <- "yes"
+df.all <- rbind(df0,df10)
+
+df.all$method <- factor(df.all$method, levels=c('LL', 'Slog', 'SCRPS', 'Sroot','CRPS'))
+
+p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma)$")),
+ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$")),
+ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$")))
+ggsave('Ainlaparbox_sigma05_outliers_val5_nonstationary_xy.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+
+score_res_nresp_outliers_df <- rbind(data.frame(val.sroot=res_0_outliers_nresp_xy$pred_sroot,val.ll=res_0_outliers_nresp_xy$pred_ll,outlier="no"),data.frame(val.sroot=res_10_outliers_nresp_xy$pred_sroot,val.ll=res_10_outliers_nresp_xy$pred_ll,outlier="yes"))
+p.outliers.score.test<-ggplot(score_res_nresp_outliers_df,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity",binwidth = 0.003)+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+ggsave('Ainlascoretest_sigma05_outliers_val5_nonstationary_xy.pdf',p.outliers.score.test,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+################33 Non-stationarity
+
+n_rep<-100#100
+res_0_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+p.res_0_outliers_nresp <- plot_results(res_0_outliers_nresp)
+
+p.res_0_outliers_nresp$p.box.p1
+p.res_0_outliers_nresp$p.box.p2
+p.res_0_outliers_nresp$p.box.p3
+
+
+n_rep<-100#100
+res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+#res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+
+p.res_10_outliers_nresp <- plot_results(res_10_outliers_nresp)
+
+p.res_10_outliers_nresp$p.box.p1
+p.res_10_outliers_nresp$p.box.p2
+p.res_10_outliers_nresp$p.box.p3
+
+
+###xy spatial
+
+n_rep<-100#100
+res_10_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+
+p.res_10_outliers_nresp_xy <- plot_results(res_10_outliers_nresp_xy)
+
+p.res_10_outliers_nresp_xy$p.box.p1
+p.res_10_outliers_nresp_xy$p.box.p2
+p.res_10_outliers_nresp_xy$p.box.p3
+
+
+n_rep<-100#100
+res_0_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=0.5,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+
+p.res_0_outliers_nresp_xy <- plot_results(res_0_outliers_nresp_xy)
+
+p.res_0_outliers_nresp_xy$p.box.p1
+p.res_0_outliers_nresp_xy$p.box.p2
+p.res_0_outliers_nresp_xy$p.box.p3
+
+
+
+hist(as.vector(A%*%inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q)))+rnorm(n=nrow(A)*1,mean = 0,sd = 0.5)))
+library(ggplot2)
+library(inlabru)
+
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector((A*(mesh_sim$loc[,1]))%*%testfield+(sim_loc[,1])*rnorm(n=nrow(A)*1,mean = 0,sd = 0.5)),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector((Atest*(mesh_sim$loc[,1]))%*%testfield+(test_loc[,1])*rnorm(n=nrow(A)*1,mean = 0,sd = 0.5)),type="Test"))
+
+
+Amap_ns.df <- rbind(data.frame(lon=mesh_sim$loc[,1],lat=mesh_sim$loc[,2],rain=as.vector(inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q)))),type="Train"))
+
+Amap_ns.df <- rbind(data.frame(lon=mesh_sim$loc[,1],lat=mesh_sim$loc[,2],rain=as.vector((mesh_sim$loc[,1])*inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q)))),type="Train"))
+
+
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector(((sim_loc[,1]*A)%*%inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q))))),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector(((test_loc[,1]*Atest)%*%inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q))))),type="Test"))
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector((sim_loc[,1])*(A%*%inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q))))),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector((test_loc[,1])*(Atest%*%inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q))))),type="Test"))
+
+
+testfield <- inla.qsample(n=1, Q = Q, mu=rep(0,nrow(Q)))
+map_ns.df <- data.frame(lon=mesh_sim$loc[,1],lat=mesh_sim$loc[,2],
+                        field=as.vector(testfield),
+                        scaledfieldx = mesh_sim$loc[,1]*as.vector(testfield),
+                        scaledfield = sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))*as.vector(testfield))
+nugget <- rnorm(n=nrow(Q),mean = 0,sd = 0.5)
+scalednuggetx <- abs(mesh_sim$loc[,1])*nugget
+scalednugget <- sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))*nugget
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                      int.color = "black",
+                      ext.color = "black")+geom_point(aes(x=lon,y=lat,color=field),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$field)),max(abs(map_ns.df$field))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=field+nugget),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$field)),max(abs(map_ns.df$field))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=field+scalednugget),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$field)),max(abs(map_ns.df$field))))
+
+#x-directional non-stationary field
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfieldx),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield)),max(abs(map_ns.df$scaledfield))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfieldx+nugget),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield+nugget)),max(abs(map_ns.df$scaledfield+nugget))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfieldx+scalednuggetx),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield+scalednugget)),max(abs(map_ns.df$scaledfield+scalednugget))))
+
+
+#two-directional non-stationary field
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfield),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield)),max(abs(map_ns.df$scaledfield))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfield+nugget),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield+nugget)),max(abs(map_ns.df$scaledfield+nugget))))
+ggplot(map_ns.df)+gg(mesh_sim,edge.color = "gray",
+                     int.color = "black",
+                     ext.color = "black")+geom_point(aes(x=lon,y=lat,color=scaledfield+scalednugget),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(map_ns.df$scaledfield+scalednugget)),max(abs(map_ns.df$scaledfield+scalednugget))))
+
+
+
+
+
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector((A*(5*mesh_sim$loc[,1]))%*%testfield+(sim_loc[,1])*rnorm(n=nrow(A)*1,mean = 0,sd = 0.5)),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector((Atest*(5*mesh_sim$loc[,1]))%*%testfield+(test_loc[,1])*rnorm(n=nrow(A)*1,mean = 0,sd = 0.5)),type="Test"))
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector((A*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2])))%*%testfield),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector((Atest*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2])))%*%testfield),type="Test"))
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector(A%*%(sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))*testfield)),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector(Atest%*%(sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))*testfield)),type="Test"))
+
+Amap_ns.df <- rbind(data.frame(lon=sim_loc[,1],lat=sim_loc[,2],rain=as.vector((t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))))%*%testfield),type="Train"),
+                    data.frame(lon=test_loc[,1],lat=test_loc[,2],rain=as.vector(t(t(Atest)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2])))%*%testfield),type="Test"))
+
+p.A.map.ns<-ggplot(Amap_ns.df)+gg(mesh_sim,edge.color = "gray",
+                            int.color = "black",
+                            ext.color = "black")+geom_point(aes(x=lon,y=lat,shape=type,color=rain),size=2)+xlab("longitude")+
+  ylab("latitude")+scale_color_distiller(palette = "Spectral",limits=c(-max(abs(Amap_ns.df$rain)),max(abs(Amap_ns.df$rain))))
+p.A.map.ns
+
+m <- Matrix::t(m)
