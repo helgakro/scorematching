@@ -487,3 +487,81 @@ p.A.map.ns<-ggplot(Amap_ns.df)+gg(mesh_sim,edge.color = "gray",
 p.A.map.ns
 
 m <- Matrix::t(m)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################ Different outlier
+
+
+set.seed(111101)
+
+sim_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
+test_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
+mesh_sim = inla.mesh.2d(loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T), max.edge=c(0.5, 1))
+plot(mesh_sim)
+points(sim_loc,col='red',pch=19)
+mesh_sim$n
+A <- inla.spde.make.A(mesh=mesh_sim,loc=sim_loc)
+Atest <- inla.spde.make.A(mesh=mesh_sim,loc=test_loc)
+
+spde = inla.spde2.matern(mesh_sim, alpha = 2)
+sigma_val <- 0.1
+params_true=spde$param.inla$theta.initial
+params_true<-c(log(sigma_val),params_true)
+print(params_true)
+Q = inla.spde.precision(spde, theta=spde$param.inla$theta.initial)
+
+outlierval<- seq(5,15,5)
+n_rep<-100#100
+predictionscore.ll.10 <- rep(0,length(outlierval))
+predictionscore.sroot.10 <- rep(0,length(outlierval))
+predictionscore.ll.0 <- rep(0,length(outlierval))
+predictionscore.sroot.0 <- rep(0,length(outlierval))
+predictionscore.diff.0 <- rep(0,length(outlierval))
+predictionscore.diff.10 <- rep(0,length(outlierval))
+for(i in c(2:length(outlierval))){
+  res_10 <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = outlierval[i],sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+
+  res_0 <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = outlierval[i],sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
+  predictionscore.ll.10[i] <- mean(res_10$pred_ll)
+  predictionscore.sroot.10[i] <- mean(res_10$pred_sroot)
+  predictionscore.diff.10[i] <- mean((res_10$pred_ll-res_10$pred_sroot)/res_10$pred_sroot)
+  predictionscore.ll.0[i] <- mean(res_0$pred_ll)
+  predictionscore.sroot.0[i] <- mean(res_0$pred_sroot)
+  predictionscore.diff.0[i] <- mean((res_0$pred_ll-res_0$pred_sroot)/res_0$pred_sroot)
+
+}
+
+
+plot(c(0,outlierval),c(predictionscore.diff.0[1],predictionscore.diff.10))
+
+plot(c(0,outlierval),-c(predictionscore.ll.0[1],predictionscore.ll.10))
+lines(c(0,outlierval),-c(predictionscore.sroot.0[1],predictionscore.sroot.10))
+
+plot(c(0,outlierval),-c(predictionscore.sroot.0[1],predictionscore.sroot.10))
+lines(c(0,outlierval),-c(predictionscore.ll.0[1],predictionscore.ll.10))
+
+
+res_10 <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 200 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll") ) #no outliers 0.0002
+
+predictionscore.ll.10 <- c(predictionscore.ll.10,mean(na.omit(res_10$pred_ll)))
+predictionscore.sroot.10 <- c(predictionscore.sroot.10,mean(res_10$pred_sroot))
+predictionscore.diff.10 <- c(predictionscore.diff.10,mean(na.omit((res_10$pred_ll-res_10$pred_sroot)/res_10$pred_sroot)))
+outlierval <- c(outlierval,100)
+
+
+hist(sapply(res_10$o_ll,function(x) x$par)[3,],breaks = 100)
+hist(sapply(res_10$o_sroot,function(x) x$par)[3,])
