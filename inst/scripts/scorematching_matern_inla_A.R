@@ -546,7 +546,13 @@ for(i in c(2:length(outlierval))){
 }
 
 
-plot(c(0,outlierval),c(predictionscore.diff.0[1],predictionscore.diff.10))
+plot(c(0,outlierval),exp(c(predictionscore.diff.0[1],predictionscore.diff.10)),xlab="outlier",
+     ylab="exp(score diff)")
+abline(a=1,b=(exp(predictionscore.diff.10[6])-exp(predictionscore.diff.0[1]))/150)
+
+
+plot(c(0,outlierval),c(predictionscore.diff.0[1],predictionscore.diff.10),xlab="outlier",
+     ylab="score diff")
 
 plot(c(0,outlierval),-c(predictionscore.ll.0[1],predictionscore.ll.10))
 lines(c(0,outlierval),-c(predictionscore.sroot.0[1],predictionscore.sroot.10))
@@ -555,13 +561,66 @@ plot(c(0,outlierval),-c(predictionscore.sroot.0[1],predictionscore.sroot.10))
 lines(c(0,outlierval),-c(predictionscore.ll.0[1],predictionscore.ll.10))
 
 
-res_10 <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 200 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll") ) #no outliers 0.0002
+res_10 <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 150 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll") ) #no outliers 0.0002
 
 predictionscore.ll.10 <- c(predictionscore.ll.10,mean(na.omit(res_10$pred_ll)))
 predictionscore.sroot.10 <- c(predictionscore.sroot.10,mean(res_10$pred_sroot))
 predictionscore.diff.10 <- c(predictionscore.diff.10,mean(na.omit((res_10$pred_ll-res_10$pred_sroot)/res_10$pred_sroot)))
-outlierval <- c(outlierval,100)
+outlierval <- c(outlierval,150)
 
 
 hist(sapply(res_10$o_ll,function(x) x$par)[3,],breaks = 100)
-hist(sapply(res_10$o_sroot,function(x) x$par)[3,])
+hist(sapply(res_10$o_sroot,function(x) x$par)[3,],breaks=100)
+
+hist((res_10$pred_ll-res_10$pred_sroot)/res_10$pred_sroot)
+
+
+p.res_10 <- plot_results(res_10)
+
+score_par <- sapply(res_10$o_sroot, function(o) o$par)
+log_par <- sapply(res_10$o_ll, function(o) o$par)
+
+#Check if all optimisations converged
+print(sum(sapply(res_10$o_sroot, function(o) o$convergence)))
+print(sum(sapply(res_10$o_ll, function(o) o$convergence)))
+
+  #Join results in dataframe
+  par_df <- data.frame(method=rep(c("Sroot","LL"),each=ncol(score_par)), par = Matrix::t(cbind(score_par,log_par)))
+
+par_df_mean <- par_df %>%
+  group_by(method) %>%
+  summarise_all(.funs = c(mean="mean"))
+p.scatter.1 <- ggplot(par_df,aes(x=par.1,y=par.2,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[2],col="black",shape=8)
+
+p.hist.p1<-ggplot(par_df,aes(x=par.1,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[1])+
+  geom_vline(data = par_df_mean,aes(xintercept=par.1_mean,color=method,linetype=method))+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+p.hist.p2<-ggplot(par_df,aes(x=par.2,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[2])+
+  geom_vline(data = par_df_mean,aes(xintercept=par.2_mean,color=method,linetype=method))+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+p.box.p1 <- ggplot(par_df,aes(x=method, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[1])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+p.box.p2 <- ggplot(par_df,aes(x=method, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[2])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+p.time <- ggplot(par_df,aes(x=i,y=run.time,color=method,shape=method))+geom_point(alpha=0.75)+ scale_color_brewer(palette = "Dark2")
+p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_histogram(alpha=0.5,position="identity")+ scale_color_brewer(palette = "Dark2")+ scale_fill_brewer(palette = "Dark2")
+
+
+  p.hist.p3<-ggplot(par_df,aes(x=par.3,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[3])+
+    geom_vline(data = par_df_mean,aes(xintercept=par.3_mean,color=method,linetype=method))+
+    scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+  p.box.p3 <- ggplot(par_df,aes(x=method, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[3])+
+    scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+  p.scatter.2 <- ggplot(par_df,aes(x=par.2,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
+  p.scatter.3 <- ggplot(par_df,aes(x=par.1,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[3],col="black",shape=8)
+
+p.box.p1
+p.box.p2
+p.box.p3
+
+
+
+########### rcrps
+res_10_rcrps <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 10 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","rcrps") ) #no outliers 0.0002

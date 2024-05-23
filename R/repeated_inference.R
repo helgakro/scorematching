@@ -657,12 +657,14 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
   score_ll_est <- rep(0,n_rep)
   times_score_rep_crps <- rep(0,n_rep)
   times_score_rep_scrps <- rep(0,n_rep)
+  times_score_rep_rcrps <- rep(0,n_rep)
   times_log_score_rep <- rep(0,n_rep)
   o_score_list_rep <- vector("list", n_rep)
   o_log_list_rep <- vector("list", n_rep)
   o_log_score_list_rep <- vector("list", n_rep)
   o_score_list_rep_crps <- vector("list", n_rep)
   o_score_list_rep_scrps <- vector("list", n_rep)
+  o_score_list_rep_rcrps <- vector("list", n_rep)
   times_score_rep_2 <- rep(0,n_rep)
   o_score_list_rep_2 <- vector("list", n_rep)
 
@@ -868,6 +870,18 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       o_score_list_rep_scrps[[i_n]]<-NULL
     }
 
+    if("rcrps"%in%scoretypes){
+      starttime <- Sys.time()
+      o6<-optim(par=c(sig0,kappa0,tau0),my_obj_func_3,A=A,m=m,scoretype="rcrps",control=list(maxit=50000))
+
+      endtime <- Sys.time()
+      times_score_rep_rcrps[i_n]<-difftime(endtime,starttime, units="secs")
+      o_score_list_rep_rcrps[[i_n]]<-o6
+    }else{
+      times_score_rep_rcrps[i_n]<--1
+      o_score_list_rep_rcrps[[i_n]]<-NULL
+    }
+
   }
 
   return(list(times_sroot=times_score_rep,
@@ -875,11 +889,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
               times_slog=times_log_score_rep,
               times_crps=times_score_rep_crps,
               times_scrps=times_score_rep_scrps,
+              times_scrps=times_score_rep_rcrps,
               o_sroot =o_score_list_rep ,
               o_ll =o_log_list_rep ,
               o_slog=o_log_score_list_rep,
               o_crps =o_score_list_rep_crps ,
               o_scrps =o_score_list_rep_scrps ,
+              o_scrps =o_score_list_rep_rcrps ,
               score_ll=score_ll_est,
               pred_sroot=pred_score_o_sroot,
               pred_ll=pred_score_o_ll))

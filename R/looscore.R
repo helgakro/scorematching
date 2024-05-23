@@ -82,6 +82,8 @@ loo_score_vectorised <- function(obs, mu, precmat,score="sroot"){
     return(mean(crps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs))))
   }else if(score=="scrps"){
     return(mean(scrps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs))))
+  }else if(score=="rcrps"){
+    return(mean(rcrps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs),rep(5,n_obs)))) #todo: insert c in a better way
   }else{
     print(paste(score," is not a supported score type"))
     return(NULL)

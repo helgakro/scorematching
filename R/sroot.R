@@ -60,6 +60,18 @@ crps_normal <- function(y,mu,sigma){
   return(score)
 }
 
+#robust crps for normal distribution
+rcrps_normal <- function(y,mu,sigma,c){
+  e1 <- e_func(0,sqrt(2)*sigma,c)
+  e2 <- e_func(mu-y,sigma,c)
+  score <- 0.5*e1-e2
+  return(-score)
+}
+
+#E(mu,sigma,c)
+e_func <- function(mu,sigma,c){
+  return(sigma*(2*dnorm(mu/sigma)-dnorm((c-mu)/sigma)-dnorm((c+mu)/sigma))-mu+(c-mu)*pnorm((mu-c)/sigma)+2*mu*pnorm(mu/sigma)+(mu+c)*pnorm((-c-mu)/sigma))
+}
 
 #crps for normal distribution
 scrps_normal <- function(y,mu,sigma){
