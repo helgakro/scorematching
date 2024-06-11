@@ -623,4 +623,153 @@ p.box.p3
 
 
 ########### rcrps
-res_10_rcrps <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 10 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","rcrps") ) #no outliers 0.0002
+# res_10_rcrps <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_rcrps_stationary <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 10, outlier_val = 5 ,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_rcrps_stationary_large <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 10, outlier_val = 10 ,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_0_rcrps_stationary <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 0, outlier_val = 0 ,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+
+res_0_rcrps_stationary_25 <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 0, outlier_val = 0 ,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_rcrps_stationary_25 <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 10, outlier_val = 10 ,sigma_val=0.5,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_0_rcrps_nonstationary_25 <- repeated_inference_norm_resp(spde,mesh_sim$n,250,Q,n_outlier = 0, outlier_val = 0 ,sigma_val=0.5,A=t(t(A)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),Atest=t(t(Atest)*sqrt(mesh_sim$loc[,1]^2+mesh_sim$loc[,2]^2)),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+
+
+rmse_df_25_0 <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS","rCRPS"),each=25),rmse=c(res_0_rcrps_stationary_25$rmse_sroot,res_0_rcrps_stationary_25$rmse_ll,res_0_rcrps_stationary_25$rmse_slog,res_0_rcrps_stationary_25$rmse_crps,res_0_rcrps_stationary_25$rmse_scrps,res_0_rcrps_stationary_25$rmse_rcrps),outlier="no")
+rmse_df_25_10 <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS","rCRPS"),each=25),rmse=c(res_10_rcrps_stationary_25$rmse_sroot,res_10_rcrps_stationary_25$rmse_ll,res_10_rcrps_stationary_25$rmse_slog,res_10_rcrps_stationary_25$rmse_crps,res_10_rcrps_stationary_25$rmse_scrps,res_10_rcrps_stationary_25$rmse_rcrps),outlier="yes")
+rmse_df_25_0_ns <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS","rCRPS"),each=25),rmse=c(res_0_rcrps_nonstationary_25$rmse_sroot,res_0_rcrps_nonstationary_25$rmse_ll,res_0_rcrps_nonstationary_25$rmse_slog,res_0_rcrps_nonstationary_25$rmse_crps,res_0_rcrps_nonstationary_25$rmse_scrps,res_0_rcrps_nonstationary_25$rmse_rcrps),outlier="no")
+rbind(rmse_df_25_0,rmse_df_25_10)%>%ggplot(aes(x=outlier,y=rmse,color=method))+geom_boxplot()
+rbind(rmse_df_25_0_ns)%>%ggplot(aes(x=outlier,y=rmse,color=method))+geom_boxplot()
+
+
+#params_true <- exp(params_true)
+p.res_10_rcrps_stationary_large<-plot_results(res_10_rcrps_stationary_large,transf=TRUE)
+p.res_10_rcrps_stationary<-plot_results(res_10_rcrps_stationary,transf=TRUE)
+p.res_0_rcrps_stationary<-plot_results(res_0_rcrps_stationary,transf=TRUE)
+
+p.res_10_rcrps_stationary$p.box.p1
+p.res_10_rcrps_stationary$p.box.p2
+p.res_10_rcrps_stationary$p.box.p3
+
+p.res_0_rcrps_stationary$p.box.p1
+p.res_0_rcrps_stationary$p.box.p2
+p.res_0_rcrps_stationary$p.box.p3
+
+
+df0<-p.res_0_rcrps_stationary$df
+df10<-p.res_10_rcrps_stationary$df
+df10_large<-p.res_10_rcrps_stationary_large$df
+
+df0$outlier <- "no"
+df10$outlier <- "medium"
+df10_large$outlier <- "large"
+df.all <- rbind(df0,df10,df10_large)
+
+df.all$method <- factor(df.all$method, levels=c('LL', 'Slog', 'SCRPS', 'Sroot','CRPS',"rCRPS"))
+df.all$outlier <- factor(df.all$outlier, levels=c('no', 'medium', 'large'))
+
+p.par.box_outliers<-plot_grid_3_vertical(ggplot(df.all,aes(x=outlier, y=log(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = log(params_true[1]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=log(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = log(params_true[2]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=log(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = log(params_true[3]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
+ggsave('Ainlaparbox_sigma05_outliers_val5_stationary_nrep250_3_v.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 10,units = 'cm')
+
+
+p.par.box_outliers<-plot_grid_3_vertical(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=1/par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = 1/params_true[3])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$1/\\tau$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
+ggsave('Ainlaparbox_sigma05_outliers_val5_stationary_nrep250_transf_3_invtau_v.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 15,units = 'cm')
+
+
+
+p.par.box_outliers<-plot_grid_3_vertical(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma_{\\epsilon}$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=sqrt(8*1)/par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = sqrt(8*1)/params_true[2])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sqrt{8\\nu}/\\kappa$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1))+ylim(c(0,100)),
+                                ggplot(df.all,aes(x=outlier, y=sqrt(gamma(1))/(sqrt(gamma(2))*2*sqrt(pi)*par.2*par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = sqrt(gamma(1))/(sqrt(gamma(2))*2*sqrt(pi)*params_true[2]*params_true[3]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1))+ylim(c(0,10)))
+ggsave('Ainlaparbox_sigma05_outliers_val5_stationary_nrep250_transf_3_range_sd_v.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 10,units = 'cm')
+
+
+
+#score_res_nresp_outliers_df <- rbind(data.frame(val.sroot=res_0_rcrps_stationary$pred_sroot,val.ll=res_0_rcrps_stationary$pred_ll,outlier="no"),data.frame(val.sroot=res_10_rcrps_stationary$pred_sroot,val.ll=res_10_rcrps_stationary$pred_ll,outlier="yes"))
+score_res_nresp_outliers_df <- rbind(data.frame(val.sroot=res_0_rcrps_stationary$pred_sroot,val.ll=res_0_rcrps_stationary$pred_ll,outlier="no"),data.frame(val.sroot=res_10_rcrps_stationary$pred_sroot,val.ll=res_10_rcrps_stationary$pred_ll,outlier="medium"),data.frame(val.sroot=res_10_rcrps_stationary_large$pred_sroot,val.ll=res_10_rcrps_stationary_large$pred_ll,outlier="large"))
+score_res_nresp_outliers_df$outlier <- factor(score_res_nresp_outliers_df$outlier, levels=c('no', 'medium', 'large'))
+p.outliers.score.test<-ggplot(score_res_nresp_outliers_df,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity",binwidth = 0.003)+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+ggsave('Ainlascoretest_sigma05_outliers_val5_stationary_nrep250_3.pdf',p.outliers.score.test,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+#todo: bera saman rmse...
+
+
+#violin plots
+
+p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=log(par.1),fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = log(params_true[1]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=log(par.2),fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = log(params_true[2]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=log(par.3),fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = log(params_true[3]))+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
+ggsave('Ainlaparbox_sigma05_outliers_val5_stationary_nrep250_3_violin.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = params_true[1])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
+                                ggplot(df.all,aes(x=outlier, y=1/par.3,fill=method,color=method))+geom_violin(alpha=0.5)+geom_hline(yintercept = params_true[3])+
+                                  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$1/\\tau$"))+ guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
+ggsave('Ainlaparbox_sigma05_outliers_val5_stationary_nrep250_transf_3_violin.pdf',p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+#################
+score_par <- sapply(res_10_rcrps$o_sroot, function(o) o$par)
+log_par <- sapply(res_10_rcrps$o_ll, function(o) o$par)
+rcrps_par <- sapply(res_10_rcrps$o_rcrps, function(o) o$par)
+
+#Check if all optimisations converged
+print(sum(sapply(res_10_rcrps$o_sroot, function(o) o$convergence)))
+print(sum(sapply(res_10_rcrps$o_ll, function(o) o$convergence)))
+print(sum(sapply(res_10_rcrps$o_rcrps, function(o) o$convergence)))
+
+#Join results in dataframe
+par_df <- data.frame(method=rep(c("Sroot","LL","rCRPS"),each=ncol(score_par)), par = Matrix::t(cbind(score_par,log_par,rcrps_par)))
+par_df <- data.frame(method=rep(c("rCRPS"),each=ncol(score_par)), par = Matrix::t(cbind(rcrps_par)))
+
+par_df_mean <- par_df %>%
+  group_by(method) %>%
+  summarise_all(.funs = c(mean="mean"))
+p.scatter.1 <- ggplot(par_df,aes(x=par.1,y=par.2,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[2],col="black",shape=8)
+
+p.hist.p1<-ggplot(par_df,aes(x=par.1,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[1])+
+  geom_vline(data = par_df_mean,aes(xintercept=par.1_mean,color=method,linetype=method))+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")
+p.hist.p2<-ggplot(par_df,aes(x=par.2,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[2])+
+  geom_vline(data = par_df_mean,aes(xintercept=par.2_mean,color=method,linetype=method))+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+p.box.p1 <- ggplot(par_df,aes(x=method, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[1])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+p.box.p2 <- ggplot(par_df,aes(x=method, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[2])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+p.time <- ggplot(par_df,aes(x=i,y=run.time,color=method,shape=method))+geom_point(alpha=0.75)+ scale_color_brewer(palette = "Dark2")
+p.time.hist <- ggplot(par_df,aes(x=run.time,color=method,fill=method))+geom_histogram(alpha=0.5,position="identity")+ scale_color_brewer(palette = "Dark2")+ scale_fill_brewer(palette = "Dark2")
+
+
+p.hist.p3<-ggplot(par_df,aes(x=par.3,fill=method,color=method))+geom_histogram(alpha=0.5, position="identity")+geom_vline(xintercept = params_true[3])+
+  geom_vline(data = par_df_mean,aes(xintercept=par.3_mean,color=method,linetype=method))+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+p.box.p3 <- ggplot(par_df,aes(x=method, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5, position="identity")+geom_hline(yintercept = params_true[3])+
+  scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+p.scatter.2 <- ggplot(par_df,aes(x=par.2,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[2],y=params_true[3],col="black",shape=8)
+p.scatter.3 <- ggplot(par_df,aes(x=par.1,y=par.3,color=method,shape=method))+geom_point(alpha=0.75)+scale_color_brewer(palette="Dark2")+annotate("point",x=params_true[1],y=params_true[3],col="black",shape=8)
+
+p.box.p1
+p.box.p2
+p.box.p3
