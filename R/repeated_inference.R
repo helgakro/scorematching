@@ -671,6 +671,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
   pred_score_o_sroot <- rep(0,n_rep)
   pred_score_o_ll <- rep(0,n_rep)
 
+  rmse_sroot <- rep(-1,n_rep)
+  rmse_ll <- rep(-1,n_rep)
+  rmse_slog <- rep(-1,n_rep)
+  rmse_crps <- rep(-1,n_rep)
+  rmse_scrps <- rep(-1,n_rep)
+  rmse_rcrps <- rep(-1,n_rep)
+
   for(i_n in c(1:n_rep)){
 
     print(paste("Iteration",i_n))
@@ -795,6 +802,20 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       return(score)
     }
 
+
+    my_rmse <- function(par,A,m){
+      sig <- exp(par[1])
+      theta <- par[-1]
+      mu <- rep(0,n_x)
+      Qx <- inla.spde.precision(spde, theta=theta)
+      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qeps <- I/sig^2
+      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      muy <- A%*%mu
+      score <- get_rmse(m,muy,Qtheta)
+      return(score)
+    }
+
     sig0 <- log(1)
     kappa0<--2
     tau0<-0.1
@@ -822,7 +843,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     }else{
       o_log_list_rep[[i_n]]<--1
 
-      score_ll_est[[i_n]] <- NULL
+      score_ll_est[[i_n]] <- -1
     }
 
     if("slog"%in%scoretypes){
@@ -837,14 +858,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
     }
 
 
-    if(!is.null(Atest)){
-      n_test <- nrow(Atest)
-      mtest <- Atest%*%mfield+rnorm(n=n_test*n_sample,mean = 0,sd = sigma_val) #added noise
-      mtest <- Matrix::t(mtest)
 
-      pred_score_o_sroot[[i_n]] <- my_obj_func_3(o1$par,A=Atest,m=mtest)
-      pred_score_o_ll[[i_n]] <- my_obj_func_3(o2$par,A=Atest,m=mtest)
-    }
 
     if("crps"%in%scoretypes){
       starttime <- Sys.time()
@@ -882,6 +896,32 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       o_score_list_rep_rcrps[[i_n]]<-NULL
     }
 
+    if(!is.null(Atest)){
+      n_test <- nrow(Atest)
+      mtest <- Atest%*%mfield+rnorm(n=n_test*n_sample,mean = 0,sd = sigma_val) #added noise
+      mtest <- Matrix::t(mtest)
+      if("sroot"%in%scoretypes){
+        pred_score_o_sroot[[i_n]] <- my_obj_func_3(o1$par,A=Atest,m=mtest)
+        rmse_sroot[[i_n]] <- my_rmse(o1$par,A=Atest,m=mtest)
+      }
+      if("ll"%in%scoretypes){
+        pred_score_o_ll[[i_n]] <- my_obj_func_3(o2$par,A=Atest,m=mtest)
+        rmse_ll[[i_n]] <- my_rmse(o2$par,A=Atest,m=mtest)
+      }
+      if("slog"%in%scoretypes){
+        rmse_slog[[i_n]] <- my_rmse(o3$par,A=Atest,m=mtest)
+      }
+      if("crps"%in%scoretypes){
+        rmse_crps[[i_n]] <- my_rmse(o4$par,A=Atest,m=mtest)
+      }
+      if("scrps"%in%scoretypes){
+        rmse_scrps[[i_n]] <- my_rmse(o5$par,A=Atest,m=mtest)
+      }
+      if("rcrps"%in%scoretypes){
+        rmse_rcrps[[i_n]] <- my_rmse(o6$par,A=Atest,m=mtest)
+      }
+    }
+
   }
 
   return(list(times_sroot=times_score_rep,
@@ -889,16 +929,22 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
               times_slog=times_log_score_rep,
               times_crps=times_score_rep_crps,
               times_scrps=times_score_rep_scrps,
-              times_scrps=times_score_rep_rcrps,
+              times_rcrps=times_score_rep_rcrps,
               o_sroot =o_score_list_rep ,
               o_ll =o_log_list_rep ,
               o_slog=o_log_score_list_rep,
               o_crps =o_score_list_rep_crps ,
               o_scrps =o_score_list_rep_scrps ,
-              o_scrps =o_score_list_rep_rcrps ,
+              o_rcrps =o_score_list_rep_rcrps ,
               score_ll=score_ll_est,
               pred_sroot=pred_score_o_sroot,
-              pred_ll=pred_score_o_ll))
+              pred_ll=pred_score_o_ll,
+              rmse_sroot=rmse_sroot,
+              rmse_ll=rmse_ll,
+              rmse_slog=rmse_slog,
+              rmse_crps=rmse_crps,
+              rmse_scrps=rmse_scrps,
+              rmse_rcrps=rmse_rcrps))
 }
 
 
@@ -1020,7 +1066,7 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,
 #' @import dplyr
 #'
 #' @export
-plot_results <- function(res,n_res=NULL,extended=TRUE){
+plot_results <- function(res,n_res=NULL,extended=TRUE,transf=FALSE){
 
   times_score_rep <- res$times_sroot
   times_log_rep <- res$times_ll
@@ -1036,7 +1082,11 @@ plot_results <- function(res,n_res=NULL,extended=TRUE){
   score_par <- sapply(o_score_list_rep[1:n_res], function(o) o$par)
   log_par <- sapply(o_log_list_rep[1:n_res], function(o) o$par)
   log_score_par <- sapply(o_log_score_list_rep[1:n_res], function(o) o$par)
-
+  if(transf){
+    score_par <- exp(score_par)
+    log_par <- exp(log_par)
+    log_score_par <- exp(log_score_par)
+  }
   #Check if all optimisations converged
   print(sum(sapply(o_score_list_rep[1:n_res], function(o) o$convergence)))
   print(sum(sapply(o_log_list_rep[1:n_res], function(o) o$convergence)))
@@ -1045,15 +1095,24 @@ plot_results <- function(res,n_res=NULL,extended=TRUE){
   if(extended){
   score_par_crps <- sapply(res$o_crps[1:n_res], function(o) o$par)
   score_par_scrps <- sapply(res$o_scrps[1:n_res], function(o) o$par)
+  score_par_rcrps <- sapply(res$o_rcrps[1:n_res], function(o) o$par)
+  if(transf){
+    score_par_crps <- exp(score_par_crps)
+    score_par_scrps <- exp(score_par_scrps)
+    score_par_rcrps <- exp(score_par_rcrps)
+  }
   print(sum(sapply(res$o_crps[1:n_res], function(o) o$convergence)))
   print(sum(sapply(res$o_scrps[1:n_res], function(o) o$convergence)))
+  print(sum(sapply(res$o_rcrps[1:n_res], function(o) o$convergence)))
   #Join results in dataframe
-  par_df <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par,score_par_crps,score_par_scrps)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res],res$times_crps[1:n_res],res$times_scrps[1:n_res]),i=rep(c(1:n_res),5))
+  par_df <- data.frame(method=rep(c("Sroot","LL","Slog","CRPS","SCRPS","rCRPS"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par,score_par_crps,score_par_scrps,score_par_rcrps)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res],res$times_crps[1:n_res],res$times_scrps[1:n_res],res$times_rcrps[1:n_res]),i=rep(c(1:n_res),6))
   }else{
 
   #Join results in dataframe
   par_df <- data.frame(method=rep(c("Sroot","LL","Slog"),each=n_res), par = Matrix::t(cbind(score_par,log_par,log_score_par)), run.time=c(times_score_rep[1:n_res],times_log_rep[1:n_res],times_log_score_rep[1:n_res]),i=rep(c(1:n_res),3))
   }
+
+
   par_df_mean <- par_df %>%
     group_by(method) %>%
     summarise_all(.funs = c(mean="mean"))
@@ -1127,6 +1186,29 @@ plot_grid_3 <- function(p1,p2,p3){
     labels = c("A", "B", "C"),
     hjust = -1,
     nrow = 1
+  )
+
+  # extract a legend that is laid out horizontally
+  legend_b <- get_legend(
+    p2 +
+      guides(color = guide_legend(nrow = 1)) +
+      theme(legend.position = "bottom")
+  )
+
+  # add the legend underneath the row we made earlier. Give it 10%
+  # of the height of one plot (via rel_heights).
+  return(plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .1)))
+}
+
+plot_grid_3_vertical <- function(p1,p2,p3){
+  prow <- plot_grid(
+    p1 + theme(legend.position="none"),
+    p2 + theme(legend.position="none"),
+    p3 + theme(legend.position="none"),
+    align = 'vh',
+    labels = c("A", "B", "C"),
+    hjust = -1,
+    ncol = 1
   )
 
   # extract a legend that is laid out horizontally
