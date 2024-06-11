@@ -83,7 +83,7 @@ loo_score_vectorised <- function(obs, mu, precmat,score="sroot"){
   }else if(score=="scrps"){
     return(mean(scrps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs))))
   }else if(score=="rcrps"){
-    return(mean(rcrps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs),rep(5,n_obs)))) #todo: insert c in a better way
+    return(mean(rcrps_normal(as.vector(obs),as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs),rep(1/sqrt(Matrix::diag(precmat)),n_obs),rep(2,n_obs)))) #todo: insert c in a better way
   }else{
     print(paste(score," is not a supported score type"))
     return(NULL)
@@ -103,6 +103,7 @@ loo_log_score <- function(obs, mu, precmat){
 log_dmvn <- function(obs,mu,precmat){
   n_dim <- nrow(precmat)
   n_obs <- nrow(obs)
+  print(Matrix::det(precmat))
   if(is.null(n_obs)){
     return(-n_dim/2*log(2*pi)+1/2*log(Matrix::det(precmat))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
   }else{
@@ -231,3 +232,12 @@ log_dmvn_eps <- function(obs,mu,precmat,sigma){
   }
 }
 
+
+
+get_rmse <- function(obs, mu, precmat){
+  n_obs <- nrow(obs)
+  obs <- Matrix::t(obs)
+  n_dim <- nrow(precmat)
+  score_vec <- nrow(n_dim)
+  return(sqrt(mean((as.vector(obs)-(as.vector(precmat%*%((mu-obs))/Matrix::diag(precmat))+as.vector(obs)))^2)))
+}
