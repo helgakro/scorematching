@@ -180,4 +180,4 @@ microbenchmark::microbenchmark(
   loo_score_vectorised(m,mu,Q,score="sroot"),
   loo_log_score(m,mu,Q),
   -log_dmvn(m,mu,Q),
-  times=1000)
+  times=100)
