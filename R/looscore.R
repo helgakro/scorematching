@@ -60,9 +60,9 @@ log_dmvn <- function(obs,mu,precmat){
   n_obs <- nrow(obs)
   if(is.null(n_obs)){
     #return(-n_dim/2*log(2*pi)+1/2*log(Matrix::det(precmat))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
-    return(-n_dim/2*log(2*pi)+sum(log(diag(chol(precmat))))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
+    return(-n_dim/2*log(2*pi)+sum(log(Matrix::diag(Matrix::chol(precmat))))-1/2*Matrix::t(obs-mu)%*%precmat%*%(obs-mu))
   }else{
-    return(-n_dim/2*log(2*pi)+sum(log(diag(chol(precmat))))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(Matrix::t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
+    return(-n_dim/2*log(2*pi)+sum(log(Matrix::diag(Matrix::chol(precmat))))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(Matrix::t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
     #return(-n_dim/2*log(2*pi)+1/2*log(Matrix::det(precmat))-1/2*mean(sapply(c(1:n_obs), function(i) as.numeric(Matrix::t(obs[i,]-mu)%*%precmat%*%(obs[i,]-mu)))))
     #return(-n_dim/2*log(2*pi)+1/2*log(Matrix::det(precmat))-1/2*mean(Matrix::diag((obs-mu)%*%precmat%*%t(obs-mu))))
   }

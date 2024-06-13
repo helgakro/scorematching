@@ -4,26 +4,32 @@ n_dim <- 1000#50000
 h<-1
 kappa <- 1
 tau <- 2
+
 getQ_regular <- function(kappa,tau,n_dim,h=1){
-C<-1/h*Matrix::Diagonal(n_dim,1)
-C[abs(row(C) - col(C)) == 1] <- -1/(3*h)
-G = 1/h*Matrix::Diagonal(n_dim, 2)
-G[abs(row(G) - col(G)) == 1] <- -1/h
+  C<-1/h*Matrix::Diagonal(n_dim,1)
+  C[abs(row(C) - col(C)) == 1] <- -1/(3*h)
+  G = 1/h*Matrix::Diagonal(n_dim, 2)
+  G[abs(row(G) - col(G)) == 1] <- -1/h
 
-K <- kappa^2*C+G
-Q <- tau^2*K%*%solve(C)%*%K
-Q[abs(Q)<0.01]<-0
-Q<-Matrix::Matrix(Q,sparse = TRUE)
+  K <- kappa^2*C+G
+  Q <- tau^2*K%*%solve(C)%*%K
+  Q[abs(Q)<0.01]<-0
+  Q<-Matrix::Matrix(Q,sparse = TRUE)
 
-image(Q)
-return(Q)
+  image(Q)
+  return(Q)
+}
+
+getQ_regular_multi <- function(kappa,tau,n_dim_1,n_dim_2,h=1){
+  Q<-kronecker(getQ_regular(kappa,tau,n_dim_1,h),getQ_regular(kappa,tau,n_dim_2,h))
+  return(Q)
 }
 
 #print(paste("Iteration",i_n))
 n <- n_dim
 mu<- rep(0,n)
 #if(is.null(m)){
-Q<-getQ_regular(kappa,tau,n_dim,h)
+Q<-getQ_regular(kappa,tau,n_dim,h) #getQ_regular(kappa,tau,n_dim,h)
 m<-t(inla.qsample(n=10, Q = Q, mu=mu))
 #m[,1]<-4
 #if(n_outlier>0){
@@ -113,7 +119,7 @@ endtime <- Sys.time()
 print(difftime(endtime,starttime, units="secs"))
 #o_score_list_rep_scrps[[i_n]]<-o5
 
-}
+
 
 
 #######plot#############
@@ -152,3 +158,26 @@ axis(side = 2, labels="log(time)")#lines(c(3:9),1.5*(c(3:9)-8)+1)
 
 plot((c(0.009,0.0014,0.23,0.62,2.03,4.43,6.02,9.17,11.74))/(c(0.010,0.016,0.25,0.84,3.73,10.62,21.58,41.33,64.04)))
 
+
+
+############################## Space time
+
+n_dim_1 <- 100
+n_dim_2 <- 100
+Q<-kronecker(getQ_regular(kappa,tau,n_dim_1,h),getQ_regular(kappa,tau,n_dim_2,h)) #getQ_regular(kappa,tau,n_dim,h)
+mu <- rep(0,nrow(Q))
+m<-t(inla.qsample(n=1, Q = Q, mu=mu))
+
+nnzero(Q)
+sum(spam::bandwidth(spam::as.spam.dgCMatrix(Q))*100*100)
+image(Q[1:200,1:1000])
+
+microbenchmark::microbenchmark(
+  loo_score_vectorised(m,mu,Q,score="sroot"),
+  times=100)
+
+microbenchmark::microbenchmark(
+  loo_score_vectorised(m,mu,Q,score="sroot"),
+  loo_log_score(m,mu,Q),
+  -log_dmvn(m,mu,Q),
+  times=1000)
