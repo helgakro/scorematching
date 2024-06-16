@@ -915,3 +915,82 @@ plot_results <- function(res,n_res=NULL,extended=TRUE,transf=FALSE){
 }
 
 
+time_comparison <- function(nlist,nlist2=NULL){
+  n_rep <- length(nlist)
+  times_score <- rep(0,n_rep)
+  times_ll <- rep(0,n_rep)
+
+  times_df <- data.frame()
+
+  for(i_n in c(1:n_rep)){
+
+    print(paste("Iteration",i_n))
+    n_dim <- nlist[i_n]
+    h<-1
+    kappa <- 1
+    tau <- 2
+
+    getQ_regular <- function(kappa,tau,n_dim,h=1){
+      C<-1/h*Matrix::Diagonal(n_dim,1)
+      C[abs(row(C) - col(C)) == 1] <- -1/(3*h)
+      G = 1/h*Matrix::Diagonal(n_dim, 2)
+      G[abs(row(G) - col(G)) == 1] <- -1/h
+
+      K <- kappa^2*C+G
+      Q <- tau^2*K%*%solve(C)%*%K
+      Q[abs(Q)<0.01]<-0
+      Q<-Matrix::Matrix(Q,sparse = TRUE)
+
+      image(Q)
+      return(Q)
+    }
+
+    getQ_regular_multi <- function(kappa,tau,n_dim_1,n_dim_2,h=1){
+      Q<-kronecker(getQ_regular(kappa,tau,n_dim_1,h),getQ_regular(kappa,tau,n_dim_2,h))
+      return(Q)
+    }
+
+    n <- n_dim
+    mu<- rep(0,n)
+    if(is.null(nlist2)){
+      Q<-getQ_regular(kappa,tau,n_dim,h) #getQ_regular(kappa,tau,n_dim,h)
+    }else{
+      Q<-getQ_regular_multi(kappa,tau,n_dim,nlist2[i_n],h)
+    }
+    n <- nrow(Q)
+    print(n)
+    mu<- rep(0,n)
+    m<-t(inla.qsample(n=1, Q = Q, mu=mu))
+
+    my_obj_func_3 <- function(par,scoretype="sroot"){
+      theta <- par
+      kappa <- exp(par[1])
+      tau <- exp(par[2])
+      mu <- rep(0,n)
+      Qtheta <- getQ_regular(kappa,tau,n_dim,h)
+      return(loo_score_vectorised(m,mu,Qtheta,score=scoretype))
+    }
+
+    my_log_obj_func <- function(par){
+      theta <- par
+      kappa <- exp(par[1])
+      tau <- exp(par[2])
+      mu <- rep(0,n)
+      Qtheta <- getQ_regular(kappa,tau,n_dim,h)
+      return(-log_dmvn(m,mu,Qtheta))
+    }
+
+
+    kappa0<--1
+    tau0<-1
+
+    mbtest<-microbenchmark::microbenchmark(
+      my_obj_func_3(c(kappa0,tau0)),
+      my_log_obj_func(c(kappa0,tau0)),
+      times=10
+    )
+
+    times_df <- rbind(times_df,data.frame(summary(mbtest,unit="ms"),n=n))
+  }
+  return(times_df)
+}

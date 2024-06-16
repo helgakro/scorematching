@@ -25,16 +25,16 @@ res_100_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,10,4) #10 outlier
 res_25_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,25,4) #5 outliers (25%)
 res_75_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,75,4) #5 outliers (75%)
 
-p.res_no_outliers <- plot_results(res_no_outliers,extended = TRUE)
-p.res_50_outliers <- plot_results(res_50_outliers)
-p.res_100_outliers <- plot_results(res_100_outliers)
+p.res_no_outliers <- plot_results(res_no_outliers,extended = FALSE)
+p.res_5_outliers <- plot_results(res_50_outliers,extended = FALSE)
+p.res_10_outliers <- plot_results(res_100_outliers,extended = FALSE)
 
 
 ########################### Save results #######################
 
 ggsave(paste("GMRF_scatter_est_no_5_10","_",n_rep,"rep",".pdf",sep=""),plot_grid_3(p.res_no_outliers$p.scatter,p.res_5_outliers$p.scatter,p.res_10_outliers$p.scatter), dpi=1200,width=18,height=8,unit="cm")
-ggsave("GMRF_mu_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.hist.mu,p.res_5_outliers$p.hist.mu,p.res_10_outliers$p.hist.mu), dpi=1200,width=18,height=8,unit="cm")
-ggsave("GMRF_rho_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.hist.rho,p.res_5_outliers$p.hist.rho,p.res_10_outliers$p.hist.rho), dpi=1200,width=18,height=8,unit="cm")
+ggsave("GMRF_p1_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.hist.p1,p.res_5_outliers$p.hist.p1,p.res_10_outliers$p.hist.p1), dpi=1200,width=18,height=8,unit="cm")
+ggsave("GMRF_p2_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.hist.p2,p.res_5_outliers$p.hist.p2,p.res_10_outliers$p.hist.p2), dpi=1200,width=18,height=8,unit="cm")
 ggsave("GMRF_time_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.time,p.res_5_outliers$p.time,p.res_10_outliers$p.time), dpi=1200,width=18,height=8,unit="cm")
 ggsave("GMRF_time_hist_est_no_5_10.pdf",plot_grid_3(p.res_no_outliers$p.time.hist+xlim(0,2)+ylim(0,61),p.res_5_outliers$p.time.hist+xlim(0,2)+ylim(0,61),p.res_10_outliers$p.time.hist+xlim(0,2)+ylim(0,61)), dpi=1200,width=18,height=8,unit="cm")
 

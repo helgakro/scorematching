@@ -174,10 +174,10 @@ image(Q[1:200,1:1000])
 
 microbenchmark::microbenchmark(
   loo_score_vectorised(m,mu,Q,score="sroot"),
-  times=100)
+  times=1)
 
 microbenchmark::microbenchmark(
   loo_score_vectorised(m,mu,Q,score="sroot"),
   loo_log_score(m,mu,Q),
   -log_dmvn(m,mu,Q),
-  times=100)
+  times=10)
