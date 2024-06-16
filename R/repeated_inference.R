@@ -925,7 +925,6 @@ time_comparison <- function(nlist,nlist2=NULL){
   for(i_n in c(1:n_rep)){
 
     print(paste("Iteration",i_n))
-    n_dim <- nlist[i_n]
     h<-1
     kappa <- 1
     tau <- 2
@@ -950,23 +949,22 @@ time_comparison <- function(nlist,nlist2=NULL){
       return(Q)
     }
 
-    n <- n_dim
-    mu<- rep(0,n)
+
     if(is.null(nlist2)){
-      Q<-getQ_regular(kappa,tau,n_dim,h) #getQ_regular(kappa,tau,n_dim,h)
+      Q<-getQ_regular(kappa,tau,nlist[i_n],h) #getQ_regular(kappa,tau,n_dim,h)
     }else{
-      Q<-getQ_regular_multi(kappa,tau,n_dim,nlist2[i_n],h)
+      Q<-getQ_regular_multi(kappa,tau,nlist[i_n],nlist2[i_n],h)
     }
-    n <- nrow(Q)
-    print(n)
-    mu<- rep(0,n)
+    n_dim <- nrow(Q)
+    print(n_dim)
+    mu<- rep(0,n_dim)
     m<-t(inla.qsample(n=1, Q = Q, mu=mu))
 
     my_obj_func_3 <- function(par,scoretype="sroot"){
       theta <- par
       kappa <- exp(par[1])
       tau <- exp(par[2])
-      mu <- rep(0,n)
+      mu <- rep(0,n_dim)
       Qtheta <- getQ_regular(kappa,tau,n_dim,h)
       return(loo_score_vectorised(m,mu,Qtheta,score=scoretype))
     }
@@ -975,22 +973,25 @@ time_comparison <- function(nlist,nlist2=NULL){
       theta <- par
       kappa <- exp(par[1])
       tau <- exp(par[2])
-      mu <- rep(0,n)
+      mu <- rep(0,n_dim)
       Qtheta <- getQ_regular(kappa,tau,n_dim,h)
       return(-log_dmvn(m,mu,Qtheta))
     }
 
 
-    kappa0<--1
-    tau0<-1
 
     mbtest<-microbenchmark::microbenchmark(
-      my_obj_func_3(c(kappa0,tau0)),
-      my_log_obj_func(c(kappa0,tau0)),
-      times=10
-    )
+    loo_score_vectorised(m,mu,Q,score="sroot"),
+    log_dmvn(m,mu,Q),
+    times=100)
 
-    times_df <- rbind(times_df,data.frame(summary(mbtest,unit="ms"),n=n))
+    # mbtest<-microbenchmark::microbenchmark(
+    #   my_obj_func_3(c(kappa0,tau0)),
+    #   my_log_obj_func(c(kappa0,tau0)),
+    #   times=1
+    # )
+
+    times_df <- rbind(times_df,data.frame(summary(mbtest,unit="ms"),n=n_dim))
   }
   return(times_df)
 }
