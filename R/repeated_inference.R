@@ -915,7 +915,7 @@ plot_results <- function(res,n_res=NULL,extended=TRUE,transf=FALSE){
 }
 
 
-time_comparison <- function(nlist,nlist2=NULL){
+time_comparison <- function(nlist,nlist2=NULL,Qsparse=TRUE){
   n_rep <- length(nlist)
   times_score <- rep(0,n_rep)
   times_ll <- rep(0,n_rep)
@@ -944,6 +944,21 @@ time_comparison <- function(nlist,nlist2=NULL){
       return(Q)
     }
 
+    getQ_dense <- function(kappa,tau,n_dim,h=1){
+      C<-1/h*Matrix::Diagonal(n_dim,1)
+      C[abs(row(C) - col(C)) == 1] <- -1/(3*h)
+      G = 1/h*Matrix::Diagonal(n_dim, 2)
+      G[abs(row(G) - col(G)) == 1] <- -1/h
+
+      K <- kappa^2*C+G
+      Q <- tau^2*K%*%solve(C)%*%K
+      #Q[abs(Q)<0.01]<-0
+      #Q<-Matrix::Matrix(Q,sparse = TRUE)
+
+      image(Q)
+      return(Q)
+    }
+
     getQ_regular_multi <- function(kappa,tau,n_dim_1,n_dim_2,h=1){
       Q<-kronecker(getQ_regular(kappa,tau,n_dim_1,h),getQ_regular(kappa,tau,n_dim_2,h))
       return(Q)
@@ -951,10 +966,15 @@ time_comparison <- function(nlist,nlist2=NULL){
 
 
     if(is.null(nlist2)){
-      Q<-getQ_regular(kappa,tau,nlist[i_n],h) #getQ_regular(kappa,tau,n_dim,h)
+      if(Qsparse){
+        Q<-getQ_regular(kappa,tau,nlist[i_n],h) #getQ_regular(kappa,tau,n_dim,h)
+      }else{
+        Q<-getQ_dense(kappa,tau,nlist[i_n],h)
+      }
     }else{
       Q<-getQ_regular_multi(kappa,tau,nlist[i_n],nlist2[i_n],h)
     }
+
     n_dim <- nrow(Q)
     print(n_dim)
     mu<- rep(0,n_dim)
