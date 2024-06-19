@@ -16,7 +16,7 @@ inference_fix_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,A=NU
     mu <- rep(0,n_x)
     #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
     Qx <- inla.spde.precision(spde, theta=theta)
-    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+    Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
 
     Qtheta <- Qx
     muy <- A%*%mu
@@ -43,7 +43,7 @@ inference_fix_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,A=NU
     mu <- rep(0,n_x)
     #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
     Qx <- inla.spde.precision(spde, theta=theta)
-    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+    Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
 
     Qtheta <- Qx
     muy <- A%*%mu
@@ -71,7 +71,7 @@ inference_fix_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,A=NU
     mu <- rep(0,n_x)
     #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
     Qx <- inla.spde.precision(spde, theta=theta)
-    Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+    Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
     Qtheta <- Qx
     muy <- A%*%mu
     #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
@@ -136,7 +136,7 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
     Qx <- inla.spde.precision(spde, theta=theta)
     Qeps <- I/sig^2
 
-    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    Qtheta <- Qeps-Qeps%*%A%*%Matrix::solve(Qx+Matrix::t(A)%*%Qeps%*%A,Matrix::t(A)%*%Qeps)
     muy <- A%*%mu
     #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
     score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
@@ -164,7 +164,7 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
     Qx <- inla.spde.precision(spde, theta=theta)
     Qeps <- I/sig^2
 
-    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    Qtheta <- Qeps-Qeps%*%A%*%Matrix::solve(Qx+Matrix::t(A)%*%Qeps%*%A,Matrix::t(A)%*%Qeps)
     muy <- A%*%mu
     #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
     score <- loo_log_score(m,muy,Qtheta)
@@ -191,7 +191,7 @@ inference_norm_resp <- function(m,spde,n_mesh,Q,n_outlier=0,outlier_val=NULL,sig
     #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
     Qx <- inla.spde.precision(spde, theta=theta)
     Qeps <- I/sig^2
-    Qtheta <- Qeps-Qeps%*%A%*%solve(Qx+Matrix::t(A)%*%Qeps%*%A)%*%Matrix::t(A)%*%Qeps
+    Qtheta <- Qeps-Qeps%*%A%*%Matrix::solve(Qx+Matrix::t(A)%*%Qeps%*%A,Matrix::t(A)%*%Qeps)
     muy <- A%*%mu
     #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
     score <- -log_dmvn(m,muy,Qtheta)
@@ -328,10 +328,10 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- Qeps <- I/sig^2
 
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_score_vectorised(m,muy,Qtheta)
@@ -357,10 +357,10 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- I/sig^2
 
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_log_score(m,muy,Qtheta)
@@ -386,9 +386,9 @@ repeated_score_norm_resp <- function(res,spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- I/sig^2
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- -log_dmvn(m,muy,Qtheta)
@@ -499,10 +499,10 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- Qeps <- I/sig^2
 
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
@@ -528,10 +528,10 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- I/sig^2
 
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_log_score(m,muy,Qtheta)
@@ -557,9 +557,9 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- I/sig^2
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- -log_dmvn(m,muy,Qtheta)
@@ -573,9 +573,9 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       theta <- par[-1]
       mu <- rep(0,n_x)
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- solve(A%*%solve(Qx)%*%Matrix::t(A))
+      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
       Qeps <- I/sig^2
-      Qtheta <- Qx-Qx%*%solve(Qx+Qeps)%*%Qx
+      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
       muy <- A%*%mu
       score <- get_rmse(m,muy,Qtheta)
       return(score)
@@ -936,7 +936,7 @@ time_comparison <- function(nlist,nlist2=NULL,Qsparse=TRUE){
       G[abs(row(G) - col(G)) == 1] <- -1/h
 
       K <- kappa^2*C+G
-      Q <- tau^2*K%*%solve(C)%*%K
+      Q <- tau^2*K%*%Matrix::solve(C,K)
       Q[abs(Q)<0.01]<-0
       Q<-Matrix::Matrix(Q,sparse = TRUE)
 
@@ -951,7 +951,7 @@ time_comparison <- function(nlist,nlist2=NULL,Qsparse=TRUE){
       G[abs(row(G) - col(G)) == 1] <- -1/h
 
       K <- kappa^2*C+G
-      Q <- tau^2*K%*%solve(C)%*%K
+      Q <- tau^2*K%*%Matrix::solve(C,K)
       #Q[abs(Q)<0.01]<-0
       #Q<-Matrix::Matrix(Q,sparse = TRUE)
 
