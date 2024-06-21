@@ -499,11 +499,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
-      Qeps <- Qeps <- I/sig^2
-
-      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
-      Qtheta <- (Qtheta+Matrix::t(Qtheta))/2
+      Qtheta <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A))+I*sig^2)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
@@ -529,11 +525,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
-      Qeps <- I/sig^2
-
-      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
-      Qtheta <- (Qtheta+Matrix::t(Qtheta))/2
+      Qtheta <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A))+I*sig^2)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_log_score(m,muy,Qtheta)
@@ -559,10 +551,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mu <- rep(0,n_x)
       #Qxy <- inla.spde.precision(spde, theta=theta) +I*sigma_val^2
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
-      Qeps <- I/sig^2
-      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
-      Qtheta <- (Qtheta+Matrix::t(Qtheta))/2
+      Qtheta <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A))+I*sig^2)
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- -log_dmvn(m,muy,Qtheta)
@@ -576,10 +565,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       theta <- par[-1]
       mu <- rep(0,n_x)
       Qx <- inla.spde.precision(spde, theta=theta)
-      Qx <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A)))
-      Qeps <- I/sig^2
-      Qtheta <- Qx-Qx%*%Matrix::solve(Qx+Qeps,Qx)
-      Qtheta <- (Qtheta+Matrix::t(Qtheta))/2
+      Qtheta <- Matrix::solve(A%*%Matrix::solve(Qx,Matrix::t(A))+I*sig^2)
       muy <- A%*%mu
       score <- get_rmse(m,muy,Qtheta)
       return(score)
@@ -753,7 +739,7 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,
     n <- narr_rep[i_n]
     mu<- rep(0,n)
     #if(is.null(m)){
-    m<-t(inla.qsample(n=10, Q = Q, mu=mu))
+    m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #10
     #m[,1]<-4
     if(n_outlier>0){
       m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
@@ -944,7 +930,6 @@ time_comparison <- function(nlist,nlist2=NULL,Qsparse=TRUE){
       Q[abs(Q)<0.01]<-0
       Q<-Matrix::Matrix(Q,sparse = TRUE)
 
-      image(Q)
       return(Q)
     }
 
@@ -959,7 +944,6 @@ time_comparison <- function(nlist,nlist2=NULL,Qsparse=TRUE){
       #Q[abs(Q)<0.01]<-0
       #Q<-Matrix::Matrix(Q,sparse = TRUE)
 
-      image(Q)
       return(Q)
     }
 
