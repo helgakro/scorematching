@@ -5,9 +5,9 @@ library(latex2exp)
 
 set.seed(111101)
 
-sim_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
-test_loc = matrix(runif(100,min=0,max=5), ncol = 2, byrow = T)
-mesh_sim = inla.mesh.2d(loc = matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T), max.edge=c(0.5, 1))
+sim_loc = matrix(runif(2*500,min=0,max=5), ncol = 2, byrow = T)
+test_loc = matrix(runif(2*500,min=0,max=5), ncol = 2, byrow = T)
+mesh_sim = inla.mesh.2d(loc = rbind(matrix(c(0,0,5,5, 0, 5, 5, 0), nrow = 4, byrow = T),sim_loc), max.edge=c(0.5, 1))
 plot(mesh_sim)
 points(sim_loc,col='red',pch=19)
 mesh_sim$n
@@ -29,18 +29,27 @@ p.A.map<-ggplot(Amap.df)+gg(mesh_sim,edge.color = "gray",
                                     int.color = "black",
                                     ext.color = "black")+geom_point(aes(x=lon,y=lat,shape=type),size=2)+scale_color_viridis_d()+xlab("longitude")+ylab("latitude")
 p.A.map
-ggsave('maternA_map_all.pdf',p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
+#ggsave('maternA_map_all.pdf',p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
+ggsave('maternA_map_all_2024_06_22.pdf',p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
 
 ########### rep optim ##############
 n_rep<-500#100
 res_no_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,sigma_val=sigma_val,A=A) #no outliers 0.0002
-p.res_no_outliers_nresp <- plot_results(res_no_outliers_nresp)
+p.res_no_outliers_nresp <- plot_results(res_no_outliers_nresp,extended = FALSE)
 p.res_no_outliers_nresp$p.scatter
 p.res_no_outliers_nresp$p.hist.p1
 p.res_no_outliers_nresp$p.hist.p2
 p.res_no_outliers_nresp$p.hist.p3
 p.res_no_outliers_nresp$p.time
 p.res_no_outliers_nresp$p.time.hist
+
+
+sapply(res_no_outliers_nresp$o_sroot, function(o) o$counts)
+sapply(res_no_outliers_nresp$o_ll, function(o) o$counts)
+sapply(res_no_outliers_nresp$o_slog, function(o) o$counts)
+
+
+#extract estimated parameters
 
 
 p.par.hist <- plot_grid_3(p.res_no_outliers_nresp$p.hist.p1+xlab(TeX("$\\log(\\sigma)$")),
