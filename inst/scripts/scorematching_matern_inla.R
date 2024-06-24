@@ -29,6 +29,7 @@ p.res_no_outliers <- plot_results(res_no_outliers,extended = FALSE)
 p.res_5_outliers <- plot_results(res_50_outliers,extended = FALSE)
 p.res_10_outliers <- plot_results(res_100_outliers,extended = FALSE)
 
+ggsave("GMRF_time_hist_est_no_rep100.pdf",p.res_no_outliers$p.time.hist, dpi=1200,width=18,height=8,unit="cm")
 
 ########################### Save results #######################
 
