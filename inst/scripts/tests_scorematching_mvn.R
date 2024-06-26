@@ -283,11 +283,11 @@ toc()
 
 
 
-################# repeated optim for fixed n###################
+################# AR-1 model: repeated optim for fixed n###################
 
 
 
-narr_rep <- rep(2^(6),100)
+narr_rep <- rep(2^(10),500)
 times_score_rep <- rep(0,length(narr_rep))
 times_log_rep <- rep(0,length(narr_rep))
 times_log_score_rep <- rep(0,length(narr_rep))
@@ -354,7 +354,12 @@ for(i_n in c(1:length(narr_rep))){
     rho <- par[1]
     #mu <- par[-1]
     mu <- rep(par[2],n)
-    return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    if(abs(rho<1)){
+      return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    }else{
+      return(-Inf)
+    }
+
     #return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
     #return(-mean(log(dmvnorm(m,mu,inv(get_prec_mat(rho,ncol(m)))))))
   }
@@ -386,9 +391,9 @@ for(i_n in c(1:length(narr_rep))){
 }
 
 #extract estimated parameters
-score_par <- sapply(o_score_list_rep, function(o) o$par)
-log_par <- sapply(o_log_list_rep, function(o) o$par)
-log_score_par <- sapply(o_log_score_list_rep, function(o) o$par)
+score_par <- sapply(o_score_list_rep[1:378], function(o) o$par)
+log_par <- sapply(o_log_list_rep[1:378], function(o) o$par)
+log_score_par <- sapply(o_log_score_list_rep[1:378], function(o) o$par)
 
 #Check if all optimisations converged
 sum(sapply(o_score_list_rep[1:378], function(o) o$convergence))
@@ -441,14 +446,26 @@ par1_sd<-rep(0,length(9))
 par2_sd<-rep(0,length(9))
 par1_sroot_sd<-rep(0,length(9))
 par2_sroot_sd<-rep(0,length(9))
+par1_crps_sd<-rep(0,length(9))
+par2_crps_sd<-rep(0,length(9))
+par1_scrps_sd<-rep(0,length(9))
+par2_scrps_sd<-rep(0,length(9))
+par1_rcrps_sd<-rep(0,length(9))
+par2_rcrps_sd<-rep(0,length(9))
 par1_slog_sd<-rep(0,length(9))
 par2_slog_sd<-rep(0,length(9))
 for(k in c(1:9)){
 narr_rep <- rep(2^(6),100)
 times_score_rep <- rep(0,length(narr_rep))
+times_crps_rep <- rep(0,length(narr_rep))
+times_scrps_rep <- rep(0,length(narr_rep))
+times_rcrps_rep <- rep(0,length(narr_rep))
 times_log_rep <- rep(0,length(narr_rep))
 times_log_score_rep <- rep(0,length(narr_rep))
 o_score_list_rep <- vector("list", length(narr_rep))
+o_crps_list_rep <- vector("list", length(narr_rep))
+o_scrps_list_rep <- vector("list", length(narr_rep))
+o_rcrps_list_rep <- vector("list", length(narr_rep))
 o_log_list_rep <- vector("list", length(narr_rep))
 o_log_score_list_rep <- vector("list", length(narr_rep))
 times_score_rep_2 <- rep(0,length(narr_rep))
@@ -458,7 +475,7 @@ o_score_list_rep_2 <- vector("list", length(narr_rep))
 for(i_n in c(1:length(narr_rep))){
 
   print(paste("Iteration",i_n))
-  rhotrue <- k/10
+  rhotrue <- 2*k/10-1
   n <- narr_rep[i_n]
   mu<- rep(0,n)
   Qmat <- get_prec_mat_sparse(rhotrue,n)
@@ -487,18 +504,26 @@ for(i_n in c(1:length(narr_rep))){
     return(loo_score_2(m,mu,get_prec_mat(rho,ncol(m))))
   }
 
-  my_obj_func_3 <- function(par){
+  my_obj_func_3 <- function(par,score="sroot"){
     rho <- par[1]
     #mu <- par[-1]
     mu <- rep(par[2],n)
-    return(loo_score_vectorised(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    if(abs(rho)<1){
+    return(loo_score_vectorised(m,mu,get_prec_mat_sparse(rho,ncol(m)),score))
+    }else{
+      return(-Inf)
+    }
   }
 
   my_log_score_obj_func <- function(par){
     rho <- par[1]
     #mu <- par[-1]
     mu <- rep(par[2],n)
+    if(abs(rho)<1){
     return(loo_log_score(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    }else{
+      return(-Inf)
+    }
   }
 
   # my_log_obj_func <- function(par){
@@ -511,7 +536,12 @@ for(i_n in c(1:length(narr_rep))){
     rho <- par[1]
     #mu <- par[-1]
     mu <- rep(par[2],n)
-    return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    if(abs(rho)<1){
+      return(-log_dmvn(m,mu,get_prec_mat_sparse(rho,ncol(m))))
+    }else{
+      return(-Inf)
+    }
+
     #return(-mean(log(dmvnorm(m,mu,get_cov_mat(rho,ncol(m))))))
     #return(-mean(log(dmvnorm(m,mu,inv(get_prec_mat(rho,ncol(m)))))))
   }
@@ -539,11 +569,32 @@ for(i_n in c(1:length(narr_rep))){
   times_log_score_rep[i_n]<-difftime(endtime,starttime, units="secs")
   o_log_score_list_rep[[i_n]]<-o3
 
+  starttime <- Sys.time()
+  o4<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000),score="crps")
+  endtime <- Sys.time()
+  times_crps_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_crps_list_rep[[i_n]]<-o4
+
+  starttime <- Sys.time()
+  o5<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000),score="scrps")
+  endtime <- Sys.time()
+  times_scrps_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_scrps_list_rep[[i_n]]<-o5
+
+  starttime <- Sys.time()
+  o6<-optim(par=c(rho0,mu0),my_obj_func_3,control=list(maxit=50000),score="rcrps")
+  endtime <- Sys.time()
+  times_rcrps_rep[i_n]<-difftime(endtime,starttime, units="secs")
+  o_rcrps_list_rep[[i_n]]<-o6
+
 
 }
 
 #extract estimated parameters
 score_par <- sapply(o_score_list_rep, function(o) o$par)
+crps_par <- sapply(o_crps_list_rep, function(o) o$par)
+scrps_par <- sapply(o_scrps_list_rep, function(o) o$par)
+rcrps_par <- sapply(o_rcrps_list_rep, function(o) o$par)
 log_par <- sapply(o_log_list_rep, function(o) o$par)
 log_score_par <- sapply(o_log_score_list_rep, function(o) o$par)
 
@@ -552,6 +603,15 @@ par2_sd[k]<-sd(log_par[2,])
 
 par1_sroot_sd[k]<-sd(score_par[1,])
 par2_sroot_sd[k]<-sd(score_par[2,])
+
+par1_crps_sd[k]<-sd(crps_par[1,])
+par2_crps_sd[k]<-sd(crps_par[2,])
+
+par1_scrps_sd[k]<-sd(scrps_par[1,])
+par2_scrps_sd[k]<-sd(scrps_par[2,])
+
+par1_rcrps_sd[k]<-sd(rcrps_par[1,])
+par2_rcrps_sd[k]<-sd(rcrps_par[2,])
 
 par1_slog_sd[k]<-sd(log_score_par[1,])
 par2_slog_sd[k]<-sd(log_score_par[2,])
@@ -568,17 +628,27 @@ plot(c(1:9),par2_sd^2)
 lines(c(1:9),1/(2^6-2*(2^6-1)*(c(1:9)/10)+(2^6-2)*(c(1:9)/10)^2)/100)
 plot((c(1:9)/10),par2_sd^2*(2^6-2*(2^6-1)*(c(1:9)/10)+(2^6-2)*(c(1:9)/10)^2))
 
-dat<-data.frame(rho=c(c(1:9)/10,seq(0.1,0.9,length.out=100)), var.mu = c(par2_sd^2,1/(2^6-2*(2^6-1)*seq(0.1,0.9,length.out=100)+(2^6-2)*seq(0.1,0.9,length.out=100)^2)/100), var.rho = c(par1_sd^2,1/(((2^6-1)-(2^6-3)*seq(0.1,0.9,length.out=100)^2)/(1-seq(0.1,0.9,length.out=100)^2)^2)/100), type=c(rep("observed",9),rep("theoretical",100)))
-p1.var.ll <- ggplot(dat,aes(x=rho,y=var.rho,color=type))+geom_line(data = subset(dat, type != "observed"),color="black") +
-  geom_point(data = subset(dat, type == "observed"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+#dat<-data.frame(rho=c(c(1:9)/10,seq(0.1,0.9,length.out=100)), var.mu = c(par2_sd^2,1/(2^6-2*(2^6-1)*seq(0.1,0.9,length.out=100)+(2^6-2)*seq(0.1,0.9,length.out=100)^2)/100), var.rho = c(par1_sd^2,1/(((2^6-1)-(2^6-3)*seq(0.1,0.9,length.out=100)^2)/(1-seq(0.1,0.9,length.out=100)^2)^2)/100), type=c(rep("observed",9),rep("theoretical",100)))
+dat<-data.frame(rho=-1+2*c(c(1:9)/10,c(1:9)/10,c(1:9)/10,c(1:9)/10,c(1:9)/10,seq(0.1,0.9,length.out=100)), var.mu = c(par2_sd^2,par2_sroot_sd^2,par2_crps_sd^2,par2_scrps_sd^2,par2_rcrps_sd^2,1/(2^6-2*(2^6-1)*(-1+2*seq(0.1,0.9,length.out=100))+(2^6-2)*(-1+2*seq(0.1,0.9,length.out=100))^2)/100), var.rho = c(par1_sd^2,par1_sroot_sd^2,par1_crps_sd^2,par1_scrps_sd^2,par1_rcrps_sd^2,1/(((2^6-1)-(2^6-3)*(-1+2*seq(0.1,0.9,length.out=100))^2)/(1-(-1+2*seq(0.1,0.9,length.out=100))^2)^2)/100), type=c(rep("LL observed",9),rep("Sroot observed",9),rep("CRPS observed",9),rep("SCRPS observed",9),rep("rCRPS observed",9),rep("theoretical",100)))
+p1.var.ll <- ggplot(dat,aes(x=rho,y=(var.rho),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
 
-p2.var.ll <- ggplot(dat,aes(x=rho,y=var.mu,color=type))+geom_line(data = subset(dat, type != "observed"),color="black") +
-  geom_point(data = subset(dat, type == "observed"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+p2.var.ll <- ggplot(dat,aes(x=rho,y=(var.mu),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
 
-p.var.ll<-plot_grid_2_nolegend(p2.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\mu)$")),p1.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\rho)$")))
-ggsave('mvn_ll_estimatevariance.pdf',p.var.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
+p.var.ll<-plot_grid_2(p2.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\mu)$")),p1.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\rho)$")))
+ggsave('mvn_ll_estimatevariance_26_1000.pdf',p.var.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
 
+p1.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.rho),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
 
+p2.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.mu),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+p.sd.ll<-plot_grid_2_nolegend(p2.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\mu)$")),p1.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\rho)$")))
+ggsave('mvn_ll_estimatesd_26_1000.pdf',p.sd.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+#save(dat,file="test_scorematching_26_1000.Rda")
 
 plot(c(1:9),par1_sroot_sd^2)
 lines(c(1:9),par1_slog_sd^2)
@@ -590,3 +660,6 @@ plot(c(1:4),par1_sd^2)
 plot(c(1:9),par2_sroot_sd)
 lines(c(1:9),par2_slog_sd)
 lines(c(1:9),par2_sd)
+
+ggplot(dat,aes(x=rho,y=var.mu,color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
