@@ -487,7 +487,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       mux <- mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_score_vectorised_eps(m,mux,Qx,sigma_val,A)
-      print(score)
+      # print(score)
       return(score)
     }
 
@@ -505,7 +505,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_score_vectorised(m,muy,Qtheta,scoretype)
-      print(score)
+      # print(score)
       return(score)
     }
 
@@ -533,7 +533,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- loo_log_score(m,muy,Qtheta)
-      print(score)
+      # print(score)
       return(score)
     }
 
@@ -561,7 +561,7 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       muy <- A%*%mu
       #if(sigma_val>0) muxy<- muxy+solve(Qxy,(I/sigma_val^2)%*%(t(m)-I%*%mu))
       score <- -log_dmvn(m,muy,Qtheta)
-      print(score)
+      # print(score)
       return(score)
     }
 
@@ -750,8 +750,8 @@ repeated_inference <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier_val=NULL,
     m<-t(inla.qsample(n=10, Q = Q, mu=mu)) #10
     #m[,1]<-4
     if(n_outlier>0){
-      m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
-      #m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-abs(m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)])+outlier_val #set random observation at each sample to the absolute observed value plus 4.
+      #m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
+      m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-abs(m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)])+outlier_val #set random observation at each sample to the absolute observed value plus 4.
     }
     #}
 

@@ -1,6 +1,6 @@
 library(INLA)
 
-n_dim <- 1000#50000
+n_dim <- 2000#50000
 h<-1
 kappa <- 1
 tau <- 2
@@ -20,6 +20,19 @@ getQ_regular <- function(kappa,tau,n_dim,h=1){
   return(Q)
 }
 
+getQ_dense <- function(kappa,tau,n_dim,h=1){
+  C<-1/h*Matrix::Diagonal(n_dim,1)
+  C[abs(row(C) - col(C)) == 1] <- -1/(3*h)
+  G = 1/h*Matrix::Diagonal(n_dim, 2)
+  G[abs(row(G) - col(G)) == 1] <- -1/h
+
+  K <- kappa^2*C+G
+  Q <- tau^2*K%*%solve(C)%*%K
+
+  image(Q)
+  return(Q)
+}
+
 getQ_regular_multi <- function(kappa,tau,n_dim_1,n_dim_2,h=1){
   Q<-kronecker(getQ_regular(kappa,tau,n_dim_1,h),getQ_regular(kappa,tau,n_dim_2,h))
   return(Q)
@@ -30,7 +43,7 @@ n <- n_dim
 mu<- rep(0,n)
 #if(is.null(m)){
 Q<-getQ_regular(kappa,tau,n_dim,h) #getQ_regular(kappa,tau,n_dim,h)
-m<-t(inla.qsample(n=10, Q = Q, mu=mu))
+m<-t(inla.qsample(n=1, Q = Q, mu=mu))
 #m[,1]<-4
 #if(n_outlier>0){
 #  m[ matrix(c(1:n_outlier,sample(1:n,n_outlier)),ncol=2)]<-outlier_val #set random observation at each sample to 4.
@@ -82,6 +95,34 @@ microbenchmark::microbenchmark(
   my_log_obj_func(c(kappa0,tau0)),
   times=10
 )
+
+microbenchmark::microbenchmark(
+  getQ_regular(1,2,1000),
+  getQ_regular(1,2,5000),
+  getQ_regular(1,2,7000),
+  getQ_regular(1,2,10000),
+  times=10
+)
+
+microbenchmark::microbenchmark(
+  getQ_dense(1,2,1000),
+  getQ_dense(1,2,5000),
+  getQ_dense(1,2,7000),
+  getQ_dense(1,2,10000),
+  times=10
+)
+
+#dfgetq<-data.frame(n=c(1000,5000,10000),t=c(769,7958,31153))
+#dfgetq<-data.frame(n=c(1000,5000,7000,10000),t=c(416,9104,17799,39766)) #sparse Q
+#dfgetq<-data.frame(n=c(1000,5000,7000,10000),t=c(463,7193,12642,26440)) # dense Q
+dfgetq %>%
+  do({
+    mod = lm(log(t) ~ log(n), data = .)
+    # print(confint(mod))
+    data.frame(Intercept = coef(mod)[1],
+               Slope = coef(mod)[2])
+  })
+
 
 
 starttime <- Sys.time()
@@ -181,3 +222,26 @@ microbenchmark::microbenchmark(
   loo_log_score(m,mu,Q),
   -log_dmvn(m,mu,Q),
   times=10)
+
+
+
+############################## Dense
+
+for(n_dim in c(100,200,500, 1000,1500)){
+Q<-getQ_dense(kappa,tau,n_dim) #getQ_regular(kappa,tau,n_dim,h)
+mu <- rep(0,nrow(Q))
+m<-t(inla.qsample(n=1, Q = Q, mu=mu))
+
+
+microbenchmark::microbenchmark(
+  loo_score_vectorised(m,mu,Q,score="sroot"),
+  times=1)
+
+mbreggrid <- microbenchmark::microbenchmark(
+  loo_score_vectorised(m,mu,Q,score="sroot"),
+  loo_log_score(m,mu,Q),
+  -log_dmvn(m,mu,Q),
+  times=10)
+print(mbreggrid)
+}
+

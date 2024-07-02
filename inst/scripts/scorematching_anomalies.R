@@ -5,7 +5,7 @@ library(INLA)
 load("inst/data/taperexample/anom1962.RData")
 
 #idxneusa <- (loc[,1]>(-120)&loc[,1]<(-100)&loc[,2]>35)#(loc[,1]>-80 & loc[,2]>40) #choose norhteast usa
-idxneusa <- sample(c(1:length(z)),100)#randomly chosen subset
+idxneusa <- z #sample(c(1:length(z)),1000)#randomly chosen subset
 loc<-loc[idxneusa,]
 z<-z[idxneusa]
 z<-z-mean(z)#normalise for neusa
@@ -105,7 +105,7 @@ res_no_outliers_nresp_old$o3
 # $message
 # NULL
 
-res_no_outliers_nresp <- inference_norm_resp(z,spde,mesh_sim$n,Q,A=A,ll=FALSE,slog=FALSE,sroot=TRUE,crps=TRUE,scrps=TRUE) #no outliers 0.0002,
+res_no_outliers_nresp <- inference_norm_resp(z,spde,mesh_sim$n,Q,A=A,ll=FALSE,slog=FALSE,sroot=FALSE,crps=FALSE,scrps=TRUE) #no outliers 0.0002,
 
 
 idxoutlier <- z<3
@@ -144,3 +144,19 @@ res_outliers_fresp <- inference_fix_resp(zoutlier,spde,mesh_sim$n,Q,A=Aoutlier) 
 
 res_no_outliers_fresp$o1
 res_outliers_fresp$o1
+
+
+
+
+####### SCRPS
+
+res_no_outliers_nresp$o5
+par.res <- exp(res_no_outliers_nresp$o5$par)
+par.res
+nufield <- 2-2/2
+sfield = gamma(nufield)/(par.res[3]^2*par.res[2]^(2*nufield)*(4*pi)^(2/2)*gamma(2))
+sfield
+range = sqrt(8)/par.res[2]
+range
+par.res[1]
+

@@ -67,7 +67,7 @@ get_M3 <- function(n,sig=0.5){
   # A<-Diagonal(n)
   # m<-t(inla.qsample(n=1, Q = Q, mu=mu)) #observations of latent field
   # m <- m+rnorm(n=n,mean = 0,sd = sigma_val) #added noise
-  n_sample <- 1
+  n_sample <- 10
   mfield<-inla.qsample(n=n_sample, Q = Q, mu=mu) #observations of latent field
   m <- A%*%mfield+rnorm(n=n_y*n_sample,mean = 0,sd = sigma_val) #added noise
   m <- Matrix::t(m)
@@ -104,8 +104,12 @@ time_comparison <- function(nlist,modeltype,nlist2=NULL,Qsparse=TRUE){
 
     mbtest<-microbenchmark::microbenchmark(
       loo_score_vectorised(modelsample$m,modelsample$mu,modelsample$Q,score="sroot"),
+      #loo_score_vectorised(modelsample$m,modelsample$mu,modelsample$Q,score="crps"),
+      #loo_score_vectorised(modelsample$m,modelsample$mu,modelsample$Q,score="scrps"),
+      #loo_score_vectorised(modelsample$m,modelsample$mu,modelsample$Q,score="rcrps"),
+      #loo_log_score(modelsample$m,modelsample$mu,modelsample$Q),
       log_dmvn(modelsample$m,modelsample$mu,modelsample$Q),
-      times=100)
+      times=1000)
 
     times_df <- rbind(times_df,data.frame(summary(mbtest,unit="ms"),n=modelsample$n_dim,modeltype=modeltype))
   }

@@ -639,14 +639,14 @@ p2.var.ll <- ggplot(dat,aes(x=rho,y=(var.mu),color=type))+geom_line(data = subse
 p.var.ll<-plot_grid_2(p2.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\mu)$")),p1.var.ll+xlab(TeX("$\\rho$"))+ylab(TeX("Var $(\\rho)$")))
 ggsave('mvn_ll_estimatevariance_26_1000.pdf',p.var.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
 
-p1.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.rho),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
-  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
-
-p2.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.mu),color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
-  geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
-
-p.sd.ll<-plot_grid_2_nolegend(p2.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\mu)$")),p1.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\rho)$")))
-ggsave('mvn_ll_estimatesd_26_1000.pdf',p.sd.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
+p1.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.rho),color=type,shape=type))+geom_line(data = subset(dat, abs(rho)<0.5& type == "theoretical"),color="black") +
+  geom_point(data = subset(dat, abs(rho)<0.5&type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+ggsave('mvn_ll_estimatesd_26_100_rho_less05.pdf',p1.sd.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
+p2.sd.ll <- ggplot(dat,aes(x=rho,y=sqrt(var.mu),color=type,shape=type))+geom_line(data = subset(dat,abs(rho)<0.5& type == "theoretical"),color="black") +
+  geom_point(data = subset(dat,abs(rho)<0.5& type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+ggsave('mvn_ll_estimatesd_26_100_mu_less05.pdf',p2.sd.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
+p.sd.ll<-plot_grid_2(p2.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\mu)$")),p1.sd.ll+xlab(TeX("$\\rho$"))+ylab(TeX("sd $(\\rho)$")))
+ggsave('mvn_ll_estimatesd_26_100.pdf',p.sd.ll,dpi = 1200,width = 18,height = 8,units = 'cm')
 
 #save(dat,file="test_scorematching_26_1000.Rda")
 
@@ -663,3 +663,86 @@ lines(c(1:9),par2_sd)
 
 ggplot(dat,aes(x=rho,y=var.mu,color=type))+geom_line(data = subset(dat, type == "theoretical"),color="black") +
   geom_point(data = subset(dat, type != "theoretical"))+scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")
+
+
+
+
+
+
+getsigmadiff<-function(i,rho,n){
+  if(i==1 || i==n){
+    return(c(0,0))
+  }else{
+    return(c(0,-rho/(1+rho^2)^(3/2)))
+  }
+}
+
+getmudiff<-function(i,rho,x,n){
+  if(i==1){
+    return(c(1-rho,x[2]))
+  }else if(i==n){
+    return(c(1-rho,x[n-1]))
+  }else {
+    return(c(1,(1-rho^2)/(1+rho^2)^(3/2)))
+  }
+}
+
+getsigmadiff2<-function(i,rho,n){
+  if(i==1 || i==n){
+    return(Matrix(c(0,0,0,0),nrow = 2))
+  }else{
+    return(Matrix(c(0,0,0,(2*rho^2-1)/(1+rho^2)^(5/2)),nrow = 2))
+  }
+}
+
+getmudiff2<-function(i,rho,x,n){
+  if(i==1){
+    return(Matrix(c(0,-1,-1,0),nrow = 2))
+  }else if(i==n){
+    return(Matrix(c(0,-1,-1,0),nrow = 2))
+  }else {
+    return(Matrix(c(0,0,0,-2*rho*(1-rho^2)/(1+rho^2)^3*(x[i-1]+x[i+1])),nrow = 2))
+  }
+}
+
+
+mu<- rep(0,n)
+rho<-0.5
+Qmat <- get_prec_mat_sparse(rho,n)
+#m<-rmvnorm(n = 100, mu,inv(Qmat))
+m<-bayesSurv::rMVNorm(n = 100, mean=mu,Q=Qmat,param="canonical")
+
+
+ediff<-function(m,rho,n){
+  ediffvec<-Matrix(0,nrow=1,ncol=2)
+  for(k in c(1:5)){
+    print(k)
+    x<-as.vector(m[k,])
+    z<-(Qmat%*%x)/sqrt(diag(Qmat))
+    sdiff <- sapply(c(1:length(z)),function(i) getsigmadiff(i,rho,n))
+    mdiff <- sapply(c(1:length(z)),function(i) getmudiff(i,rho,x,n))
+    ediffvectmp <- 2*sdiff*dnorm(as.vector(z))+mdiff*(2*pnorm(as.vector(z))-1)
+    ediffvec <- ediffvec+sum(t(ediffvectmp))
+  }
+  return(ediffvec)
+}
+
+
+ediff2 <- function(m,rho,n){
+  ediffvec2<-Matrix(0,nrow=1,ncol=2)
+  for(k in c(1:5)){
+    print(k)
+    x<-as.vector(m[k,])
+    z<-(Qmat%*%x)/sqrt(diag(Qmat))
+    sdiff <- sapply(c(1:length(z)),function(i) getsigmadiff(i,rho,n))
+    mdiff <- sapply(c(1:length(z)),function(i) getmudiff(i,rho,x,n))
+    sdiff2 <- sapply(c(1:length(z)),function(i) getsigmadiff2(i,rho,n))
+    mdiff2 <- sapply(c(1:length(z)),function(i) getmudiff2(i,rho,x,n))
+
+    ediffvectmp <- 2*sdiff*dnorm(as.vector(z))+mdiff*(2*pnorm(as.vector(z))-1)
+    ediffvec <- ediffvec+sum(t(ediffvectmp))
+  }
+  return(ediffvec2)
+}
+
+gradep<-1/5*ediff(m,rho,n)

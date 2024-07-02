@@ -111,10 +111,10 @@ plot_grid_3_nolegend <- function(p1,p2,p3){
 #' @export
 plot_grid_4 <- function(p1,p2,p3,p4){
   prow <- plot_grid(
+    p1 + theme(legend.position="none"),
+    p2 + theme(legend.position="none"),
+    p3 + theme(legend.position="none"),
     p4 + theme(legend.position="none"),
-    p5 + theme(legend.position="none"),
-    p6 + theme(legend.position="none"),
-    p7 + theme(legend.position="none"),
     align = 'vh',
     labels = c("A", "B", "C", "D"),
     hjust = -1,

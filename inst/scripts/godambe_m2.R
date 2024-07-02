@@ -1,12 +1,12 @@
 #godambe numerical derivatives
 
-set.seed(20240629)
-n<-100
-sim_loc = matrix(runif(2*n), ncol = 2, byrow = T)
-mesh_sim = inla.mesh.2d(loc = sim_loc, max.edge=c(0.5, 1))
-plot(mesh_sim)
-points(sim_loc,col='red',pch=19)
-spde = inla.spde2.matern(mesh_sim, alpha = 2)
+# set.seed(20240629)
+# n<-100
+# sim_loc = matrix(runif(2*n), ncol = 2, byrow = T)
+# mesh_sim = inla.mesh.2d(loc = sim_loc, max.edge=c(0.5, 1))
+# plot(mesh_sim)
+# points(sim_loc,col='red',pch=19)
+# spde = inla.spde2.matern(mesh_sim, alpha = 2)
 
 
 params_true=spde$param.inla$theta.initial
@@ -54,6 +54,15 @@ LL <- function(par){
   return(-log_dmvn(m,mu,Qtheta))
 }
 
+LOOSlog <- function(par,A,m){
+  # print(par)
+  theta <- par
+  mu <- rep(0,n_dim)
+  Qtheta <- inla.spde.precision(spde, theta=theta)
+  score <- loo_log_score(m,muy,Qtheta)
+  return(score)
+}
+
 gradLOOS<-pracma::grad(LOOscore,params_true)
 hessLOOS<-pracma::hessian(LOOscore,params_true)
 gradLOOScrps<-pracma::grad(LOOscore,params_true,scoretype="crps")
@@ -63,8 +72,13 @@ hessLOOSscrps<-pracma::hessian(LOOscore,params_true,scoretype="scrps")
 gradLOOSrcrps<-pracma::grad(LOOscore,params_true,scoretype="rcrps")
 hessLOOSrcrps<-pracma::hessian(LOOscore,params_true,scoretype="rcrps")
 
+gradLOOSlog<-pracma::grad(LOOSlog,params_true)
+hessLOOSlog<-pracma::hessian(LOOSlog,params_true)
+
 gradLL<-pracma::grad(LL,params_true)
 hessLL<-pracma::hessian(LL,params_true)
+
+
 
 EgradLOOS <-EgradLOOS + gradLOOS
 EgradLOOS2 <-EgradLOOS2 + gradLOOS%*%t(gradLOOS)
@@ -82,6 +96,9 @@ EgradLOOSrcrps <-EgradLOOSrcrps + gradLOOSrcrps
 EgradLOOS2rcrps <-EgradLOOS2rcrps + gradLOOSrcrps%*%t(gradLOOSrcrps)
 EhessLOOSrcrps <-EhessLOOSrcrps + hessLOOSrcrps
 
+EgradLOOSlog <-EgradLOOSlog + gradLOOSlog
+EgradLOOS2log <-EgradLOOS2log + gradLOOSlog%*%t(gradLOOSlog)
+EhessLOOSlog <-EhessLOOSlog + hessLOOSlog
 
 EgradLL <-EgradLL + gradLL
 EgradLL2 <-EgradLL2 + gradLL%*%t(gradLL)
@@ -93,12 +110,14 @@ EgradLOOScrps <- EgradLOOScrps/n_rep
 EgradLOOSscrps <- EgradLOOSscrps/n_rep
 EgradLOOSrcrps <- EgradLOOSrcrps/n_rep
 EgradLOOS <- EgradLOOS/n_rep
+EgradLOOSlog <- EgradLOOSlog/n_rep
 EgradLL <- EgradLL/n_rep
 
 EgradLOOS2crps <- EgradLOOS2crps/n_rep
 EgradLOOS2scrps <- EgradLOOS2scrps/n_rep
 EgradLOOS2rcrps <- EgradLOOS2rcrps/n_rep
 EgradLOOS2 <- EgradLOOS2/n_rep
+EgradLOOS2log <- EgradLOOS2log/n_rep
 EgradLL2 <- EgradLL2/n_rep
 
 
@@ -106,12 +125,14 @@ EhessLOOScrps <- EhessLOOScrps/n_rep
 EhessLOOSscrps <- EhessLOOSscrps/n_rep
 EhessLOOSrcrps <- EhessLOOSrcrps/n_rep
 EhessLOOS <- EhessLOOS/n_rep
+EhessLOOSlog <- EhessLOOSlog/n_rep
 EhessLL <- EhessLL/n_rep
 
 VLOOScrps <- solve(EhessLOOScrps,EgradLOOS2crps)%*%t(solve(EhessLOOScrps))
 VLOOSscrps <- solve(EhessLOOSscrps,EgradLOOS2scrps)%*%t(solve(EhessLOOSscrps))
 VLOOSrcrps <- solve(EhessLOOSrcrps,EgradLOOS2rcrps)%*%t(solve(EhessLOOSrcrps))
 VLOOS <- solve(EhessLOOS,EgradLOOS2)%*%t(solve(EhessLOOS))
+VLOOSlos <- solve(EhessLOOSlog,EgradLOOS2log)%*%t(solve(EhessLOOSlog))
 VLL<-solve(EhessLL,EgradLL2)%*%t(solve(EhessLL))
 
 
@@ -119,13 +140,14 @@ diag(VLOOScrps)
 diag(VLOOSscrps)
 diag(VLOOSrcrps)
 diag(VLOOS)
+diag(VLOOSlog)
 diag(VLL)
 
 
 tmptitle <- paste("godambe_m2",format(Sys.time(), "%Y%m%d_%H%M%S"),sep = "")
-save(VLOOScrps,VLOOSscrps,VLOOSrcrps,VLOOS,VLL,params_true,file=paste(tmptitle,".Rda",sep=""))
+save(VLOOScrps,VLOOSscrps,VLOOSrcrps,VLOOS,VLOOSlog,VLL,params_true,file=paste(tmptitle,".Rda",sep=""))
 godambe_res_df<-rbind(godambe_res_df,data.frame(god.sd1 = sqrt(c(diag(VLOOScrps)[1],diag(VLOOSscrps)[1],diag(VLOOSrcrps)[1],diag(VLOOS)[1],diag(VLL)[1])),p1=p1,p2=p2,
-god.sd2 = sqrt(c(diag(VLOOScrps)[2],diag(VLOOSscrps)[2],diag(VLOOSrcrps)[2],diag(VLOOS)[2],diag(VLL)[2])),type = c("crps","scrps","rcrps","sroot","ll")))
+god.sd2 = sqrt(c(diag(VLOOScrps)[2],diag(VLOOSscrps)[2],diag(VLOOSrcrps)[2],diag(VLOOS)[2],diag(VLL)[2])),type = c("crps","scrps","rcrps","sroot","slog","ll")))
   }
 }
 

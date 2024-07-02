@@ -21,11 +21,11 @@ A <- inla.spde.make.A(mesh=mesh_sim,loc=sim_loc)
 Atest <- inla.spde.make.A(mesh=mesh_sim,loc=test_loc)
 
 spde = inla.spde2.matern(mesh_sim, alpha = 2)
-sigma_val <- 0.1 #0.1
-#params_true=spde$param.inla$theta.initial #-1.8301722  0.5646601
+sigma_val <- 0.5 #0.05 #0.1
+params_true=spde$param.inla$theta.initial #-1.8301722  0.5646601
 #params_true=log(c(1.25,sqrt(gamma(1)/(2^2*1.25^2*4*pi*gamma(2)))))
 # params_true=log(c(sqrt(2),sqrt(gamma(1)/(sqrt(2)^2*1^2*4*pi*gamma(2)))))
-params_true=log(c(sqrt(2),1.75))
+#params_true=log(c(sqrt(2),1.75))
 print(params_true)
 
 # plot mesh
@@ -40,10 +40,10 @@ p.A.map
 ggsave(paste(tmptitle,"_map.pdf",sep=""),p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
 
 #range
-#sqrt(8)/exp(params_true[1])
+sqrt(8)/exp(params_true[1])
 
 #sigma
-#sqrt(gamma(1)/(exp(params_true[2])^2*exp(params_true[1])^2*(4*pi)*gamma(2)))
+sqrt(gamma(1)/(exp(params_true[2])^2*exp(params_true[1])^2*(4*pi)*gamma(2)))
 
 
 #params_true<-log(c(sigma_val,0.5,1.75))#params_true<-c(log(sigma_val),params_true)
@@ -51,10 +51,10 @@ ggsave(paste(tmptitle,"_map.pdf",sep=""),p.A.map,dpi = 1200,width = 12,height = 
 # M2
 
 Q = inla.spde.precision(spde, theta=params_true)
-n_rep=100
+n_rep=300 #100
 res_no_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q) #no outliers
-res_5_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,5,4) #5 outliers (50%)
-res_10_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,10,4) #10 outliers (100%)
+res_5_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,5,5) #5 outliers (50%)
+res_10_outliers <- repeated_inference(spde,mesh_sim$n,n_rep,Q,10,5) #10 outliers (100%)
 
 save(res_no_outliers,res_5_outliers,res_10_outliers,file=paste(tmptitle,"resM2",".Rda",sep=""))
 
@@ -106,8 +106,9 @@ ggsave(paste(tmptitle,"resM2",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width
 
 # M3
 
-res_0_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 4,sigma_val=sigma_val,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
-res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 4,sigma_val=sigma_val,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_0_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=sigma_val,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=sigma_val,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_outliers_nresp_large <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 10,sigma_val=sigma_val,A=A,Atest=Atest,scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
 
 save(res_0_outliers_nresp,res_10_outliers_nresp,file=paste(tmptitle,"resM3",".Rda",sep=""))
 
@@ -148,9 +149,9 @@ ggsave(paste(tmptitle,"resM3_filtered",".pdf",sep=""),p.par.box_outliers,dpi = 1
 # M4 nonstationary
 
 
-res_0_outliers_nresp_ns <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps")) #no outliers 0.0002
+res_0_outliers_nresp_ns <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=sigma_val,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps")) #no outliers 0.0002
 
-res_10_outliers_nresp_ns <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_outliers_nresp_ns <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=sigma_val,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
 #res_10_outliers_nresp <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*mesh_sim$loc[,1]),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps") ) #no outliers 0.0002
 save(res_0_outliers_nresp_ns,res_10_outliers_nresp_ns,file=paste(tmptitle,"resM4_ns",".Rda",sep=""))
 p.res_0_outliers_nresp_ns <- plot_results(res_0_outliers_nresp_ns,extended = TRUE)
@@ -188,9 +189,9 @@ ggsave(paste(tmptitle,"resM4_filtered",".pdf",sep=""),p.par.box_outliers,dpi = 1
 
 ###xy spatial
 
-res_0_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=0.5,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_0_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 0, outlier_val = 5,sigma_val=sigma_val,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
 
-res_10_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=0.5,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
+res_10_outliers_nresp_xy <- repeated_inference_norm_resp(spde,mesh_sim$n,n_rep,Q,n_outlier = 10, outlier_val = 5,sigma_val=sigma_val,A=t(t(A)*sqrt(abs(mesh_sim$loc[,1]*mesh_sim$loc[,2]))),Atest=t(t(Atest)*mesh_sim$loc[,1]),scoretypes=c("sroot","ll","slog","crps","scrps","rcrps") ) #no outliers 0.0002
 save(res_0_outliers_nresp_xy,res_10_outliers_nresp_xy,file=paste(tmptitle,"resM4_xy",".Rda",sep=""))
 
 p.res_0_outliers_nresp_xy <- plot_results(res_0_outliers_nresp_xy,extended = TRUE)
@@ -225,3 +226,80 @@ p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=m
 
 p.par.box_outliers
 ggsave(paste(tmptitle,"resM4xy_filtered",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+
+#### traintest
+
+
+score_sroot <- sapply(res_0_outliers_nresp$o_sroot[1:n_rep], function(o) o$value)
+score_ll <- res_0_outliers_nresp$score_ll
+
+score_res_nresp_df_3 <- data.frame(val.sroot=score_sroot,val.ll=score_ll,outlier="no")
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
+
+
+score_res_nresp_df_4 <- data.frame(val.sroot=res_0_outliers_nresp$pred_sroot,val.ll=res_0_outliers_nresp$pred_ll,outlier="no")
+p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
+
+score_res_nresp_df_5 <- data.frame(val.sroot=res_0_outliers_nresp$rmse_sroot,val.ll=res_0_outliers_nresp$rmse_ll,outlier="no")
+p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
+
+
+p.score.hist.multi<-plot_grid_3_nolegend(p.score.hist3+xlim(c(-0.01,0.01)),p.score.hist4+xlim(c(-0.01,0.01)),p.score.hist5+xlim(c(-0.01,0.01)))
+p.score.hist.multi
+ggsave(paste(tmptitle,"resM3_traintest",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
+
+
+
+
+score_sroot <- sapply(res_10_outliers_nresp$o_sroot[1:n_rep], function(o) o$value)
+score_ll <- res_10_outliers_nresp$score_ll
+
+score_res_nresp_df_3 <- rbind(score_res_nresp_df_3,data.frame(val.sroot=score_sroot,val.ll=score_ll,outlier="medium"))
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
+
+score_res_nresp_df_4 <- rbind(score_res_nresp_df_4,data.frame(val.sroot=res_10_outliers_nresp$pred_sroot,val.ll=res_10_outliers_nresp$pred_ll,outlier="medium"))
+p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
+score_res_nresp_df_5 <- rbind(score_res_nresp_df_5,data.frame(val.sroot=res_10_outliers_nresp$rmse_sroot,val.ll=res_10_outliers_nresp$rmse_ll,outlier="medium"))
+p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
+
+
+
+score_sroot <- sapply(res_10_outliers_nresp_large$o_sroot[1:n_rep], function(o) o$value)
+score_ll <- res_10_outliers_nresp_large$score_ll
+
+score_res_nresp_df_3 <- rbind(score_res_nresp_df_3,data.frame(val.sroot=score_sroot,val.ll=score_ll,outlier="large"))
+score_res_nresp_df_3$outlier <- as.factor(score_res_nresp_df_3$outlier)
+score_res_nresp_df_3$outlier <-  factor(score_res_nresp_df_3$outlier,levels=c("no","medium","large"))
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+
+
+score_res_nresp_df_4 <- rbind(score_res_nresp_df_4,data.frame(val.sroot=res_10_outliers_nresp_large$pred_sroot,val.ll=res_10_outliers_nresp_large$pred_ll,outlier="large"))
+score_res_nresp_df_4$outlier <- as.factor(score_res_nresp_df_4$outlier)
+score_res_nresp_df_4$outlier <-  factor(score_res_nresp_df_4$outlier,levels=c("no","medium","large"))
+p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+
+score_res_nresp_df_5 <- rbind(score_res_nresp_df_5,data.frame(val.sroot=res_10_outliers_nresp_large$rmse_sroot,val.ll=res_10_outliers_nresp_large$rmse_ll,outlier="large"))
+score_res_nresp_df_5$outlier <- as.factor(score_res_nresp_df_5$outlier)
+score_res_nresp_df_5$outlier <-  factor(score_res_nresp_df_5$outlier,levels=c("no","medium","large"))
+p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+
+
+
+p.score.hist.multi<-plot_grid_3(p.score.hist3,p.score.hist4,p.score.hist5)
+p.score.hist.multi
+ggsave(paste(tmptitle,"resM3_traintest_outliers",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
+
