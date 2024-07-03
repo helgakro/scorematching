@@ -11,8 +11,9 @@
 
 params_true=spde$param.inla$theta.initial
 godambe_res_df<-data.frame()
-for (p1 in seq(-4,-3,0.2)){
-  for(p2 in seq(1,4,0.2)){
+#for (p1 in seq(-4,-3,0.2)){
+p1=c(-1.8,0.5) #-3.6
+  for(p2 in seq(-0.5,1.5,0.1)){ #seq(2,4,0.2)){
     EgradLOOS2crps <- Matrix(0,nrow=2,ncol=2)
     EgradLOOScrps <- Matrix(0,nrow=2,ncol=2)
     EhessLOOScrps <- Matrix(0,nrow=2,ncol=2)
@@ -25,11 +26,19 @@ for (p1 in seq(-4,-3,0.2)){
     EgradLOOS2 <- Matrix(0,nrow=2,ncol=2)
     EgradLOOS <- Matrix(0,nrow=2,ncol=2)
     EhessLOOS <- Matrix(0,nrow=2,ncol=2)
+    EgradLOOS2log <- Matrix(0,nrow=2,ncol=2)
+    EgradLOOSlog <- Matrix(0,nrow=2,ncol=2)
+    EhessLOOSlog <- Matrix(0,nrow=2,ncol=2)
     EgradLL2 <- Matrix(0,nrow=2,ncol=2)
     EgradLL <- Matrix(0,nrow=2,ncol=2)
     EhessLL <- Matrix(0,nrow=2,ncol=2)
 
-    params_true = c(p1,p2)
+    if(p1==-1.8){
+      params_true = c(p1,p2)
+    }else{
+      params_true = c((p2-2),p1)
+    }
+
 Q = inla.spde.precision(spde, theta=params_true)
 n_dim <- nrow(Q)
 mu<- rep(0,n_dim)
@@ -37,8 +46,8 @@ mu<- rep(0,n_dim)
 n_rep <- 500
 
 for(i in c(1:n_rep)){ #repeat 100 times
-  print(i)
-m<-t(inla.qsample(n=1, Q = Q, mu=mu))
+  print(paste(params_true[1],params_true[2],i))
+m<-t(inla.qsample(n=10, Q = Q, mu=mu))
 
 LOOscore <- function(par,scoretype="sroot"){
   theta <- par
@@ -54,12 +63,12 @@ LL <- function(par){
   return(-log_dmvn(m,mu,Qtheta))
 }
 
-LOOSlog <- function(par,A,m){
+LOOSlog <- function(par){
   # print(par)
   theta <- par
   mu <- rep(0,n_dim)
   Qtheta <- inla.spde.precision(spde, theta=theta)
-  score <- loo_log_score(m,muy,Qtheta)
+  score <- loo_log_score(m,mu,Qtheta)
   return(score)
 }
 
@@ -132,7 +141,7 @@ VLOOScrps <- solve(EhessLOOScrps,EgradLOOS2crps)%*%t(solve(EhessLOOScrps))
 VLOOSscrps <- solve(EhessLOOSscrps,EgradLOOS2scrps)%*%t(solve(EhessLOOSscrps))
 VLOOSrcrps <- solve(EhessLOOSrcrps,EgradLOOS2rcrps)%*%t(solve(EhessLOOSrcrps))
 VLOOS <- solve(EhessLOOS,EgradLOOS2)%*%t(solve(EhessLOOS))
-VLOOSlos <- solve(EhessLOOSlog,EgradLOOS2log)%*%t(solve(EhessLOOSlog))
+VLOOSlog <- solve(EhessLOOSlog,EgradLOOS2log)%*%t(solve(EhessLOOSlog))
 VLL<-solve(EhessLL,EgradLL2)%*%t(solve(EhessLL))
 
 
@@ -146,10 +155,12 @@ diag(VLL)
 
 tmptitle <- paste("godambe_m2",format(Sys.time(), "%Y%m%d_%H%M%S"),sep = "")
 save(VLOOScrps,VLOOSscrps,VLOOSrcrps,VLOOS,VLOOSlog,VLL,params_true,file=paste(tmptitle,".Rda",sep=""))
-godambe_res_df<-rbind(godambe_res_df,data.frame(god.sd1 = sqrt(c(diag(VLOOScrps)[1],diag(VLOOSscrps)[1],diag(VLOOSrcrps)[1],diag(VLOOS)[1],diag(VLL)[1])),p1=p1,p2=p2,
-god.sd2 = sqrt(c(diag(VLOOScrps)[2],diag(VLOOSscrps)[2],diag(VLOOSrcrps)[2],diag(VLOOS)[2],diag(VLL)[2])),type = c("crps","scrps","rcrps","sroot","slog","ll")))
+godambe_res_df<-rbind(godambe_res_df,data.frame(god.sd1 = sqrt(c(diag(VLOOScrps)[1],diag(VLOOSscrps)[1],diag(VLOOSrcrps)[1],diag(VLOOS)[1],
+                                                                 diag(VLOOSlog)[1],diag(VLL)[1])),p1=params_true[1],p2=params_true[2],
+god.sd2 = sqrt(c(diag(VLOOScrps)[2],diag(VLOOSscrps)[2],diag(VLOOSrcrps)[2],diag(VLOOS)[2],
+                 diag(VLOOSlog)[2],diag(VLL)[2])),type = c("crps","scrps","rcrps","sroot","slog","ll")))
   }
-}
+# }
 
 m2_test <- repeated_inference(spde,mesh_sim$n,100,Q,n_outlier=0,outlier_val=NULL,m=NULL)
 par_sroot <- sapply(m2_test$o_sroot,function(o) o$par)
@@ -199,8 +210,8 @@ godambe_df %>% tidyr::gather(partype,sd,-type,-n)%>%ggplot(aes(x=partype,y=sd,co
 godambe_res_df%>%ggplot(aes(x=p1,y=god.sd1,color=type,shape=as.factor(p2)))+geom_point()+geom_line()
 subset(godambe_res_df,p1==-3.6)%>%ggplot(aes(x=p2,y=god.sd2,color=type,shape=as.factor(p1)))+geom_point()+geom_line()
 godambe_res_df$type<-as.factor(godambe_res_df$type)
-levels(godambe_res_df$type)<-c("CRPS","LL","rCRPS","SCRPS","Sr")
-godambe_res_df$type<-factor(godambe_res_df$type,c("LL","SCRPS","Sr","CRPS","rCRPS"))
+levels(godambe_res_df$type)<-c("CRPS","LL","rCRPS","SCRPS","Slog","Sr")
+godambe_res_df$type<-factor(godambe_res_df$type,c("LL","Slog","SCRPS","Sr","CRPS","rCRPS"))
 p.g.22<-subset(godambe_res_df,p1==-3.6&p2>2)%>%ggplot(aes(x=p2,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\tau)$"))
 p.g.12<-subset(godambe_res_df,p2==2.6)%>%ggplot(aes(x=p1,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("sd $\\log(\\tau)$"))
 p.g.21<-subset(godambe_res_df,p1==-3.6&p2>2)%>%ggplot(aes(x=p2,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
