@@ -40,7 +40,7 @@ p.A.map
 ggsave(paste(tmptitle,"_map.pdf",sep=""),p.A.map,dpi = 1200,width = 12,height = 10,units = 'cm')
 
 #range
-sqrt(8)/exp(params_true[1])
+sqrt(8)/exp(params_true[2])
 
 #sigma
 sqrt(gamma(1)/(exp(params_true[2])^2*exp(params_true[1])^2*(4*pi)*gamma(2)))
@@ -88,16 +88,16 @@ df.all%>%group_by(outlier,method)%>%summarize(
 df.all$method <- factor(df.all$method, levels=c('LL', 'Slog', 'SCRPS', 'Sroot','CRPS','rCRPS'))
 df.all$outlier <- factor(df.all$outlier,levels=c("0","5","10"))
 
-p.par.box_outliers<-plot_grid_2(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
+p.par.box_outliers<-plot_grid_2(ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 ggsave(paste(tmptitle,"resM2_log",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
-p.par.box_outliers<-plot_grid_2(ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[1]))+
+p.par.box_outliers<-plot_grid_2(ggplot(df.all,aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
+                                ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[1]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\tau$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 p.par.box_outliers
@@ -122,25 +122,30 @@ df0$outlier <- "0"
 df10$outlier <- "10"
 df.all <- rbind(df0,df10)
 
+df.all%>%group_by(outlier,method)%>%summarize(
+  mean = mean(run.time, na.rm = TRUE),
+  sd = sd(run.time, na.rm = TRUE)
+)
+
 df.all$method <- factor(df.all$method, levels=c('LL', 'Slog', 'SCRPS', 'Sroot','CRPS','rCRPS'))
 df.all$outlier <- factor(df.all$outlier,levels=c("0","10"))
 
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma_{\\epsilon})$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
+                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 ggsave(paste(tmptitle,"resM3_log",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
 
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[1]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma_{\\epsilon}$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
+                                ggplot(df.all,aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(subset(df.all,1/exp(par.3)<20),aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
+                                ggplot(subset(df.all,1/exp(par.2)<20),aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\tau$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 
 p.par.box_outliers
@@ -169,19 +174,19 @@ df.all$outlier <- factor(df.all$outlier,levels=c("0","10"))
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma_{\\epsilon})$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
+                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 ggsave(paste(tmptitle,"resM4_log",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
 
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[1]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma_{\\epsilon}$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
+                                ggplot(df.all,aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(subset(df.all,1/exp(par.3)<20),aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
+                                ggplot(subset(df.all,1/exp(par.3)<20),aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\tau$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 
 p.par.box_outliers
@@ -209,19 +214,19 @@ df.all$outlier <- factor(df.all$outlier,levels=c("0","10"))
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=par.1,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[1])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\sigma_{\\epsilon})$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
+                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\kappa)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=par.3,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[3])+
+                                ggplot(df.all,aes(x=outlier, y=par.2,fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = params_true[2])+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\log(\\tau)$"))+xlab("Number of outliers")+
                                   guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 ggsave(paste(tmptitle,"resM4xy_log",".pdf",sep=""),p.par.box_outliers,dpi = 1200,width = 18,height = 8,units = 'cm')
 
 p.par.box_outliers<-plot_grid_3(ggplot(df.all,aes(x=outlier, y=exp(par.1),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[1]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\sigma_{\\epsilon}$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(df.all,aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
+                                ggplot(df.all,aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\kappa$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)),
-                                ggplot(subset(df.all,1/exp(par.3)<20),aes(x=outlier, y=exp(par.3),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[3]))+
+                                ggplot(subset(df.all,1/exp(par.3)<20),aes(x=outlier, y=exp(par.2),fill=method,color=method))+geom_boxplot(alpha=0.5)+geom_hline(yintercept = exp(params_true[2]))+
                                   scale_fill_brewer(palette = "Dark2")+ scale_color_brewer(palette = "Dark2")+ylab(TeX("$\\tau$"))+xlab("Number of outliers")+guides(colour = guide_legend(nrow = 1),fill = guide_legend(nrow = 1)))
 
 p.par.box_outliers
@@ -233,26 +238,32 @@ ggsave(paste(tmptitle,"resM4xy_filtered",".pdf",sep=""),p.par.box_outliers,dpi =
 #### traintest
 
 
-score_sroot <- sapply(res_0_outliers_nresp$o_sroot[1:n_rep], function(o) o$value)
+score_sroot <- sapply(res_0_outliers_nresp$o_sroot[1:300], function(o) o$value)
 score_ll <- res_0_outliers_nresp$score_ll
 
 score_res_nresp_df_3 <- data.frame(val.sroot=score_sroot,val.ll=score_ll,outlier="no")
-p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+p.score.hist3<-ggplot(score_res_nresp_df_3,aes(x=(val.ll-val.sroot)/val.ll*100,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
 
 
 score_res_nresp_df_4 <- data.frame(val.sroot=res_0_outliers_nresp$pred_sroot,val.ll=res_0_outliers_nresp$pred_ll,outlier="no")
-p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+p.score.hist4<-ggplot(score_res_nresp_df_4,aes(x=(val.ll-val.sroot)/val.ll*100,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
 
 score_res_nresp_df_5 <- data.frame(val.sroot=res_0_outliers_nresp$rmse_sroot,val.ll=res_0_outliers_nresp$rmse_ll,outlier="no")
-p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.ll*100,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
+
+score_res_nresp_df_6 <- data.frame(val.sroot=res_0_outliers_nresp$rmse_sroot_train,val.ll=res_0_outliers_nresp$rmse_ll_train,outlier="no")
+p.score.hist6<-ggplot(score_res_nresp_df_6,aes(x=(val.ll-val.sroot)/val.ll*100,color="#1B9E77",fill="#1B9E77"))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")+xlab("Rel score diff")
 
 
-p.score.hist.multi<-plot_grid_3_nolegend(p.score.hist3+xlim(c(-0.01,0.01)),p.score.hist4+xlim(c(-0.01,0.01)),p.score.hist5+xlim(c(-0.01,0.01)))
+# p.score.hist.multi<-plot_grid_3_nolegend(p.score.hist3+xlim(c(-0.75,0.75)),p.score.hist4+xlim(c(-0.75,0.75)),p.score.hist5+xlim(c(-0.75,0.75)))
+p.score.hist.multi<-plot_grid_4_nolegend(p.score.hist3+xlim(c(-0.75,0.75)),p.score.hist4+xlim(c(-0.75,0.75)),p.score.hist6+xlim(c(-0.75,0.75)),p.score.hist5+xlim(c(-0.75,0.75)))
 p.score.hist.multi
-ggsave(paste(tmptitle,"resM3_traintest",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave(paste(tmptitle,"resM3_traintest_ll",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
+ggsave(paste(tmptitle,"resM3_traintest_ll",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 12,units = 'cm')
 
 
 
@@ -273,6 +284,9 @@ score_res_nresp_df_5 <- rbind(score_res_nresp_df_5,data.frame(val.sroot=res_10_o
 p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
 
+score_res_nresp_df_6 <- rbind(score_res_nresp_df_6,data.frame(val.sroot=res_10_outliers_nresp$rmse_sroot_train,val.ll=res_10_outliers_nresp$rmse_ll_train,outlier="medium"))
+p.score.hist6<-ggplot(score_res_nresp_df_6,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+theme(legend.position = "none")
 
 
 score_sroot <- sapply(res_10_outliers_nresp_large$o_sroot[1:n_rep], function(o) o$value)
@@ -298,8 +312,34 @@ p.score.hist5<-ggplot(score_res_nresp_df_5,aes(x=(val.ll-val.sroot)/val.sroot,co
   scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
 
 
+score_res_nresp_df_6 <- rbind(score_res_nresp_df_6,data.frame(val.sroot=res_10_outliers_nresp_large$rmse_sroot_train,val.ll=res_10_outliers_nresp_large$rmse_ll_train,outlier="large"))
+score_res_nresp_df_6$outlier <- as.factor(score_res_nresp_df_6$outlier)
+score_res_nresp_df_6$outlier <-  factor(score_res_nresp_df_6$outlier,levels=c("no","medium","large"))
+p.score.hist6<-ggplot(score_res_nresp_df_6,aes(x=(val.ll-val.sroot)/val.sroot,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
 
-p.score.hist.multi<-plot_grid_3(p.score.hist3,p.score.hist4,p.score.hist5)
+
+
+#p.score.hist.multi<-plot_grid_3(p.score.hist3,p.score.hist4,p.score.hist5)
+p.score.hist.multi<-plot_grid_4(p.score.hist3,p.score.hist4,p.score.hist6,p.score.hist5)
 p.score.hist.multi
 ggsave(paste(tmptitle,"resM3_traintest_outliers",".pdf",sep=""),p.score.hist.multi,dpi = 1200,width = 18,height = 8,units = 'cm')
 
+
+
+
+######
+
+p.score.hist3_normll<-ggplot(score_res_nresp_df_3,aes(x=100*(val.ll-val.sroot)/val.ll,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+p.score.hist4_normll<-ggplot(score_res_nresp_df_4,aes(x=100*(val.ll-val.sroot)/val.ll,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+p.score.hist5_normll<-ggplot(score_res_nresp_df_5,aes(x=100*(val.ll-val.sroot)/val.ll,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+p.score.hist6_normll<-ggplot(score_res_nresp_df_6,aes(x=100*(val.ll-val.sroot)/val.ll,color=outlier,fill=outlier))+geom_histogram(alpha=0.5, position="identity")+
+  scale_fill_brewer(palette = "Dark2")+  scale_color_brewer(palette = "Dark2")+xlab("Rel score diff")
+
+# p.score.hist.multi_normll<-plot_grid_3(p.score.hist3_normll+xlim(c(-1,12)),p.score.hist4_normll+xlim(c(-1,12)),p.score.hist5_normll+xlim(c(-1,12)))
+p.score.hist.multi_normll<-plot_grid_4(p.score.hist3_normll+xlim(c(-1,12)),p.score.hist4_normll+xlim(c(-1,12)),p.score.hist6_normll+xlim(c(-1,12)),p.score.hist5_normll+xlim(c(-1,12)))
+p.score.hist.multi_normll
+ggsave(paste(tmptitle,"resM3_traintest_outliers_normll",".pdf",sep=""),p.score.hist.multi_normll,dpi = 1200,width = 18,height = 12,units = 'cm')

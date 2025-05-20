@@ -12,7 +12,7 @@
 params_true=spde$param.inla$theta.initial
 godambe_res_df<-data.frame()
 #for (p1 in seq(-4,-3,0.2)){
-p1=c(-1.8,0.5) #-3.6
+for (p1 in c(-1.8,0.5)){ #-3.6
   for(p2 in seq(-0.5,1.5,0.1)){ #seq(2,4,0.2)){
     EgradLOOS2crps <- Matrix(0,nrow=2,ncol=2)
     EgradLOOScrps <- Matrix(0,nrow=2,ncol=2)
@@ -160,7 +160,7 @@ godambe_res_df<-rbind(godambe_res_df,data.frame(god.sd1 = sqrt(c(diag(VLOOScrps)
 god.sd2 = sqrt(c(diag(VLOOScrps)[2],diag(VLOOSscrps)[2],diag(VLOOSrcrps)[2],diag(VLOOS)[2],
                  diag(VLOOSlog)[2],diag(VLL)[2])),type = c("crps","scrps","rcrps","sroot","slog","ll")))
   }
-# }
+}
 
 m2_test <- repeated_inference(spde,mesh_sim$n,100,Q,n_outlier=0,outlier_val=NULL,m=NULL)
 par_sroot <- sapply(m2_test$o_sroot,function(o) o$par)
@@ -210,8 +210,8 @@ godambe_df %>% tidyr::gather(partype,sd,-type,-n)%>%ggplot(aes(x=partype,y=sd,co
 godambe_res_df%>%ggplot(aes(x=p1,y=god.sd1,color=type,shape=as.factor(p2)))+geom_point()+geom_line()
 subset(godambe_res_df,p1==-3.6)%>%ggplot(aes(x=p2,y=god.sd2,color=type,shape=as.factor(p1)))+geom_point()+geom_line()
 godambe_res_df$type<-as.factor(godambe_res_df$type)
-levels(godambe_res_df$type)<-c("CRPS","LL","rCRPS","SCRPS","Slog","Sr")
-godambe_res_df$type<-factor(godambe_res_df$type,c("LL","Slog","SCRPS","Sr","CRPS","rCRPS"))
+levels(godambe_res_df$type)<-c("CRPS","LL","rCRPS","SCRPS","Slog","Sroot")
+godambe_res_df$type<-factor(godambe_res_df$type,c("LL","Slog","SCRPS","Sroot","CRPS","rCRPS"))
 p.g.22<-subset(godambe_res_df,p1==-3.6&p2>2)%>%ggplot(aes(x=p2,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\tau)$"))
 p.g.12<-subset(godambe_res_df,p2==2.6)%>%ggplot(aes(x=p1,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("sd $\\log(\\tau)$"))
 p.g.21<-subset(godambe_res_df,p1==-3.6&p2>2)%>%ggplot(aes(x=p2,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_viridis_d()+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
@@ -222,6 +222,11 @@ p.g.12<-subset(godambe_res_df,p2==2.6)%>%ggplot(aes(x=p1,y=god.sd2,color=type,li
 p.g.21<-subset(godambe_res_df,p1==-3.6&p2>2)%>%ggplot(aes(x=p2,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
 p.g.11<-subset(godambe_res_df,p2==2.6)%>%ggplot(aes(x=p1,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
 
+
+p.g.22<-subset(godambe_res_df,p1==-1.8&p2>0)%>%ggplot(aes(x=p2,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\tau)$"))
+p.g.12<-subset(godambe_res_df,p2==0.5)%>%ggplot(aes(x=p1,y=god.sd2,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("sd $\\log(\\tau)$"))
+p.g.21<-subset(godambe_res_df,p1==-1.8&p2>0)%>%ggplot(aes(x=p2,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\tau)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
+p.g.11<-subset(godambe_res_df,p2==0.5)%>%ggplot(aes(x=p1,y=god.sd1,color=type,linetype=type))+geom_line()+scale_color_brewer(palette="Dark2")+xlab(TeX("$\\log(\\kappa)$"))+ylab(TeX("sd $\\log(\\kappa)$"))
 
 plot_grid_4(p.g.11,p.g.12,p.g.21,p.g.22)
 tmptitle <- paste("godambe_res_m2",format(Sys.time(), "%Y%m%d_%H%M%S"),sep = "")

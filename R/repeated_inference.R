@@ -443,6 +443,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
   rmse_scrps <- rep(-1,n_rep)
   rmse_rcrps <- rep(-1,n_rep)
 
+  rmse_sroot_train <- rep(-1,n_rep)
+  rmse_ll_train <- rep(-1,n_rep)
+  rmse_slog_train <- rep(-1,n_rep)
+  rmse_crps_train <- rep(-1,n_rep)
+  rmse_scrps_train <- rep(-1,n_rep)
+  rmse_rcrps_train <- rep(-1,n_rep)
+
   for(i_n in c(1:n_rep)){
 
     print(paste("Iteration",i_n))
@@ -664,22 +671,28 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
       if("sroot"%in%scoretypes){
         pred_score_o_sroot[[i_n]] <- my_obj_func_3(o1$par,A=Atest,m=mtest)
         rmse_sroot[[i_n]] <- my_rmse(o1$par,A=Atest,m=mtest)
+        rmse_sroot_train[[i_n]] <- my_rmse(o1$par,A=A,m=m)
       }
       if("ll"%in%scoretypes){
         pred_score_o_ll[[i_n]] <- my_obj_func_3(o2$par,A=Atest,m=mtest)
         rmse_ll[[i_n]] <- my_rmse(o2$par,A=Atest,m=mtest)
+        rmse_ll_train[[i_n]] <- my_rmse(o2$par,A=A,m=m)
       }
       if("slog"%in%scoretypes){
         rmse_slog[[i_n]] <- my_rmse(o3$par,A=Atest,m=mtest)
+        rmse_slog_train[[i_n]] <- my_rmse(o3$par,A=A,m=m)
       }
       if("crps"%in%scoretypes){
         rmse_crps[[i_n]] <- my_rmse(o4$par,A=Atest,m=mtest)
+        rmse_crps_train[[i_n]] <- my_rmse(o4$par,A=A,m=m)
       }
       if("scrps"%in%scoretypes){
         rmse_scrps[[i_n]] <- my_rmse(o5$par,A=Atest,m=mtest)
+        rmse_scrps_train[[i_n]] <- my_rmse(o5$par,A=A,m=m)
       }
       if("rcrps"%in%scoretypes){
         rmse_rcrps[[i_n]] <- my_rmse(o6$par,A=Atest,m=mtest)
+        rmse_rcrps_train[[i_n]] <- my_rmse(o6$par,A=A,m=m)
       }
     }
 
@@ -705,7 +718,13 @@ repeated_inference_norm_resp <- function(spde,n_mesh,n_rep,Q,n_outlier=0,outlier
               rmse_slog=rmse_slog,
               rmse_crps=rmse_crps,
               rmse_scrps=rmse_scrps,
-              rmse_rcrps=rmse_rcrps))
+              rmse_rcrps=rmse_rcrps,
+              rmse_sroot_train=rmse_sroot_train,
+              rmse_ll_train=rmse_ll_train,
+              rmse_slog_train=rmse_slog_train,
+              rmse_crps_train=rmse_crps_train,
+              rmse_scrps_train=rmse_scrps_train,
+              rmse_rcrps_train=rmse_rcrps_train))
 }
 
 
